@@ -1,19 +1,47 @@
 // ===================================================
 // 遊戯王マスターデュエル カウンター
-// 古代決闘石板 - Firebase Firestore クラウド自動同期
+// 古代決闘石板 - マイデッキ別通算勝率＆五十音プルダウン
 // ===================================================
 
-const DEFAULT_POPULAR_DECKS = [
-  "スネークアイ", "粛声", "ユベル", "天盃龍", "ラビュリンス",
-  "神碑", "R-ACE", "ティアラメンツ", "烙印", "センチュリオン",
-  "キマイラ", "クシャトリラ", "ピュアリィ", "ドラゴンリンク",
-  "ふわんだりぃず", "御巫", "青眼の白龍", "ブラック・マジシャン"
+// 初期テーマリスト（指定の13テーマ）
+const INITIAL_THEMES = [
+  "ブラックマジシャン",
+  "青眼の白龍",
+  "ウィッチクラフト",
+  "ブリッツクリーク",
+  "ドラゴンテイル",
+  "六花",
+  "ゴブリンライダー",
+  "ヘカトンケイル",
+  "巳剣",
+  "烙印",
+  "獄神",
+  "ヤミー",
+  "道化の一座"
 ];
+
+// 五十音順ソート用の読み仮名辞書（漢字テーマを正確にあいうえお順に並べる用）
+const KANA_MAP = {
+  "ウィッチクラフト": "うぃっちくらふと",
+  "ゴブリンライダー": "ごぶりんらいだー",
+  "獄神": "ごくしん",
+  "ドラゴンテイル": "どらごんている",
+  "道化の一座": "どうけのいちざ",
+  "ブラックマジシャン": "ぶらっくまじしゃん",
+  "ブリッツクリーク": "ぶりっつくりーく",
+  "青眼の白龍": "ぶるーあいずほわいとどらごん",
+  "ヘカトンケイル": "へかとんけいる",
+  "巳剣": "みけん",
+  "ヤミー": "やみー",
+  "烙印": "らくいん",
+  "六花": "りっか"
+};
 
 const STORAGE_KEYS = {
   FIREBASE_CONFIG: "yugioh_firebase_config_v1",
   LOCAL_DUELS: "yugioh_local_duels_backup_v1",
-  CUSTOM_DECKS: "yugioh_custom_decks_v1"
+  CUSTOM_THEMES: "yugioh_custom_themes_v2",
+  LAST_MY_DECK: "yugioh_last_my_deck_v1"
 };
 
 // アプリ状態
@@ -21,15 +49,15 @@ const state = {
   coin: "heads",
   turn: "first",
   result: "win",
-  deck: "",
+  myDeck: "",
+  opponentDeck: "",
   isFirebaseActive: false,
   firestore: null,
   unsubscribeSnapshot: null,
   records: [],
-  deckStats: [],
-  customDecks: [],
-  isEditingChips: false,
-  knownDecks: new Set(DEFAULT_POPULAR_DECKS)
+  themes: [],
+  selectedMyDeckFilter: "__ALL__", // 通年成績のマイデッキ絞り込み ("__ALL__" = 全体)
+  deckStats: []
 };
 
 const elements = {
@@ -37,7 +65,6 @@ const elements = {
   connectionStatusPill: document.getElementById("connection-status-pill"),
   statusDot: document.getElementById("status-dot"),
   statusText: document.getElementById("status-text"),
-  syncBanner: document.getElementById("sync-banner"),
   btnOpenSyncSettings: document.getElementById("btn-open-sync-settings"),
 
   // モーダル
@@ -46,13 +73,15 @@ const elements = {
   settingFirebaseConfig: document.getElementById("setting-firebase-config"),
   btnSaveFirebase: document.getElementById("btn-save-firebase"),
   btnDisconnectFirebase: document.getElementById("btn-disconnect-firebase"),
-  firebaseStatusMsg: document.getElementById("firebase-status-msg"),
 
-  // 入力フォーム
-  deckInput: document.getElementById("deck-input"),
-  deckSuggestions: document.getElementById("deck-suggestions"),
-  quickDeckChips: document.getElementById("quick-deck-chips"),
-  btnClearDeck: document.getElementById("btn-clear-deck"),
+  // 入力フォーム (プルダウン式)
+  myDeckSelect: document.getElementById("my-deck-select"),
+  opponentDeckSelect: document.getElementById("opponent-deck-select"),
+  btnToggleAddTheme: document.getElementById("btn-toggle-add-theme"),
+  themeManagerPanel: document.getElementById("theme-manager-panel"),
+  newThemeInput: document.getElementById("new-theme-input"),
+  btnAddTheme: document.getElementById("btn-add-theme"),
+  btnResetThemes: document.getElementById("btn-reset-themes"),
   btnRecord: document.getElementById("btn-record"),
   toastMessage: document.getElementById("toast-message"),
 
@@ -72,10 +101,12 @@ const elements = {
   allTotalDuels: document.getElementById("all-total-duels"),
   allWinRate: document.getElementById("all-win-rate"),
   allWinDetail: document.getElementById("all-win-detail"),
+  allWinRateLabel: document.getElementById("all-win-rate-label"),
   allCoinRate: document.getElementById("all-coin-rate"),
   allCoinDetail: document.getElementById("all-coin-detail"),
   allFirstRate: document.getElementById("all-first-rate"),
   allFirstDetail: document.getElementById("all-first-detail"),
+  myDeckFilterSelect: document.getElementById("my-deck-filter-select"),
 
   // デッキ別テーブル・コントロール
   deckFilterInput: document.getElementById("deck-filter-input"),
@@ -94,16 +125,16 @@ const elements = {
 // ===================================================
 document.addEventListener("DOMContentLoaded", async () => {
   initServiceWorker();
+  loadThemes();
   setupToggleButtons();
-  setupDeckInputs();
+  setupThemeControls();
   setupActionButtons();
   setupModal();
 
-  // Firebaseの初期化を試行
+  // Firebase接続試行
   await initFirebase();
 });
 
-// PWA Service Worker 登録
 function initServiceWorker() {
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js").catch(() => {});
@@ -111,7 +142,168 @@ function initServiceWorker() {
 }
 
 // ===================================================
-// Firebase Firestore の初期化 & リアルタイム同期
+// テーマ管理 ＆ 五十音順ソートエンジン
+// ===================================================
+function loadThemes() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.CUSTOM_THEMES);
+    if (raw) {
+      state.themes = JSON.parse(raw);
+    } else {
+      state.themes = [...INITIAL_THEMES];
+    }
+  } catch (e) {
+    state.themes = [...INITIAL_THEMES];
+  }
+  sortThemesGojuon();
+}
+
+function saveThemes() {
+  localStorage.setItem(STORAGE_KEYS.CUSTOM_THEMES, JSON.stringify(state.themes));
+}
+
+// 五十音順（あいうえお順）ソート
+function sortThemesGojuon() {
+  const getSortKey = (name) => {
+    return KANA_MAP[name] || name;
+  };
+
+  state.themes.sort((a, b) => {
+    return getSortKey(a).localeCompare(getSortKey(b), "ja");
+  });
+}
+
+function setupThemeControls() {
+  renderSelectOptions();
+
+  // テーマ追加パネルの開閉トグル
+  elements.btnToggleAddTheme.addEventListener("click", () => {
+    const isHidden = elements.themeManagerPanel.style.display === "none";
+    elements.themeManagerPanel.style.display = isHidden ? "block" : "none";
+    elements.btnToggleAddTheme.textContent = isHidden ? "✕ 閉じる" : "＋ テーマ追加";
+    if (isHidden) elements.newThemeInput.focus();
+  });
+
+  // 新規テーマ追加ボタン
+  elements.btnAddTheme.addEventListener("click", () => {
+    const name = elements.newThemeInput.value.trim();
+    if (!name) return;
+    addNewTheme(name);
+    elements.newThemeInput.value = "";
+    elements.themeManagerPanel.style.display = "none";
+    elements.btnToggleAddTheme.textContent = "＋ テーマ追加";
+    showToast(`「${name}」をテーマ一覧に追加しました！`);
+  });
+
+  elements.newThemeInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      elements.btnAddTheme.click();
+    }
+  });
+
+  // 初期テーマリセット
+  elements.btnResetThemes.addEventListener("click", () => {
+    if (!confirm("テーマ一覧を初期の13テーマにリセットしますか？")) return;
+    state.themes = [...INITIAL_THEMES];
+    sortThemesGojuon();
+    saveThemes();
+    renderSelectOptions();
+    showToast("初期テーマ一覧にリセットしました。");
+  });
+
+  // 直前の自分の使用デッキを復元
+  const lastMyDeck = localStorage.getItem(STORAGE_KEYS.LAST_MY_DECK);
+  if (lastMyDeck && state.themes.includes(lastMyDeck)) {
+    elements.myDeckSelect.value = lastMyDeck;
+  }
+
+  // 選択変更時の記憶
+  elements.myDeckSelect.addEventListener("change", () => {
+    localStorage.setItem(STORAGE_KEYS.LAST_MY_DECK, elements.myDeckSelect.value);
+  });
+
+  // 通年成績のマイデッキフィルター変更
+  elements.myDeckFilterSelect.addEventListener("change", () => {
+    state.selectedMyDeckFilter = elements.myDeckFilterSelect.value;
+    updateAllDisplays();
+  });
+}
+
+// テーマの追加（自動五十音順ソート＆即時反映）
+function addNewTheme(themeName) {
+  if (!themeName) return;
+  if (!state.themes.includes(themeName)) {
+    state.themes.push(themeName);
+    sortThemesGojuon();
+    saveThemes();
+  }
+  renderSelectOptions();
+  // 追加したテーマを選択状態にする
+  elements.opponentDeckSelect.value = themeName;
+}
+
+// プルダウンの選択肢を再描画
+function renderSelectOptions() {
+  const myCurrent = elements.myDeckSelect.value;
+  const oppCurrent = elements.opponentDeckSelect.value;
+
+  // 1. 自分のデッキ プルダウン
+  elements.myDeckSelect.innerHTML = state.themes.map(t => {
+    return `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`;
+  }).join("");
+
+  if (myCurrent && state.themes.includes(myCurrent)) {
+    elements.myDeckSelect.value = myCurrent;
+  } else if (state.themes.length > 0) {
+    elements.myDeckSelect.value = state.themes[0];
+  }
+
+  // 2. 対戦相手のデッキ プルダウン
+  elements.opponentDeckSelect.innerHTML = state.themes.map(t => {
+    return `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`;
+  }).join("");
+
+  if (oppCurrent && state.themes.includes(oppCurrent)) {
+    elements.opponentDeckSelect.value = oppCurrent;
+  } else if (state.themes.length > 0) {
+    elements.opponentDeckSelect.value = state.themes[0];
+  }
+
+  // 3. 通年フィルター用 プルダウンの更新
+  renderMyDeckFilterOptions();
+}
+
+function renderMyDeckFilterOptions() {
+  const currentFilter = state.selectedMyDeckFilter;
+  // これまで自分が使用したことのあるデッキ一覧を収集
+  const usedDecks = new Set();
+  state.records.forEach(r => {
+    if (r.my_deck) usedDecks.add(r.my_deck);
+  });
+
+  const sortedUsed = Array.from(usedDecks).sort((a, b) => {
+    const keyA = KANA_MAP[a] || a;
+    const keyB = KANA_MAP[b] || b;
+    return keyA.localeCompare(keyB, "ja");
+  });
+
+  let optionsHtml = '<option value="__ALL__">すべての使用デッキ (全体通算)</option>';
+  sortedUsed.forEach(d => {
+    optionsHtml += `<option value="${escapeHtml(d)}">👑 ${escapeHtml(d)} の成績</option>`;
+  });
+
+  elements.myDeckFilterSelect.innerHTML = optionsHtml;
+  if (sortedUsed.includes(currentFilter) || currentFilter === "__ALL__") {
+    elements.myDeckFilterSelect.value = currentFilter;
+  } else {
+    elements.myDeckFilterSelect.value = "__ALL__";
+    state.selectedMyDeckFilter = "__ALL__";
+  }
+}
+
+// ===================================================
+// Firebase Firestore 初期化 & リアルタイム同期
 // ===================================================
 async function initFirebase() {
   const savedConfig = localStorage.getItem(STORAGE_KEYS.FIREBASE_CONFIG);
@@ -126,10 +318,8 @@ async function initFirebase() {
     if (!firebase.apps.length) {
       firebase.initializeApp(config);
     }
-
     state.firestore = firebase.firestore();
 
-    // オフラインキャッシュ有効化 (ネットが切れてもスマホ内に保存・復帰時自動同期)
     try {
       await state.firestore.enablePersistence({ synchronizeTabs: true });
     } catch (err) {
@@ -142,7 +332,6 @@ async function initFirebase() {
     elements.btnDisconnectFirebase.style.display = "inline-block";
     elements.settingFirebaseConfig.value = JSON.stringify(config, null, 2);
 
-    // リアルタイムリスナー起動 (端末間で勝率・履歴が瞬時に自動同期)
     subscribeFirestoreDuels();
 
   } catch (e) {
@@ -153,9 +342,7 @@ async function initFirebase() {
 }
 
 function subscribeFirestoreDuels() {
-  if (state.unsubscribeSnapshot) {
-    state.unsubscribeSnapshot();
-  }
+  if (state.unsubscribeSnapshot) state.unsubscribeSnapshot();
 
   state.unsubscribeSnapshot = state.firestore
     .collection("duels")
@@ -167,16 +354,7 @@ function subscribeFirestoreDuels() {
       });
 
       state.records = records;
-      // 既知デッキ更新
-      records.forEach(r => {
-        if (r.opponent_deck) state.knownDecks.add(r.opponent_deck);
-      });
-      renderDeckChips();
-
-      // ローカルバックアップ保存
       localStorage.setItem(STORAGE_KEYS.LOCAL_DUELS, JSON.stringify(records));
-
-      // 画面更新
       updateAllDisplays();
     }, (error) => {
       console.error("Firestore onSnapshot error:", error);
@@ -190,7 +368,6 @@ function setOfflineMode(message) {
   elements.btnDisconnectFirebase.style.display = "none";
 }
 
-// Firebase未設定時のローカルデータ読み込み
 function loadLocalFallbackData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.LOCAL_DUELS);
@@ -198,10 +375,6 @@ function loadLocalFallbackData() {
   } catch (e) {
     state.records = [];
   }
-  state.records.forEach(r => {
-    if (r.opponent_deck) state.knownDecks.add(r.opponent_deck);
-  });
-  renderDeckChips();
   updateAllDisplays();
 }
 
@@ -220,154 +393,9 @@ function setupToggleButtons() {
       state[groupName] = value;
     });
   });
-}
-
-// ===================================================
-// デッキ入力＆チップ設定
-// ===================================================
-function setupDeckInputs() {
-  loadCustomDecks();
-  renderDeckChips();
-
-  elements.btnClearDeck.addEventListener("click", () => {
-    elements.deckInput.value = "";
-    elements.deckInput.focus();
-  });
 
   elements.deckFilterInput.addEventListener("input", renderDeckStatsTable);
   elements.deckSortSelect.addEventListener("change", renderDeckStatsTable);
-
-  // テーマ編集パネルの開閉
-  const btnToggleEdit = document.getElementById("btn-toggle-edit-chips");
-  const editPanel = document.getElementById("deck-edit-panel");
-  if (btnToggleEdit && editPanel) {
-    btnToggleEdit.addEventListener("click", () => {
-      state.isEditingChips = !state.isEditingChips;
-      editPanel.style.display = state.isEditingChips ? "block" : "none";
-      btnToggleEdit.textContent = state.isEditingChips ? "完了" : "✏️ テーマ編集";
-      renderDeckChips();
-    });
-  }
-
-  // テーマの追加ボタン
-  const btnAddChip = document.getElementById("btn-add-custom-chip");
-  const newChipInput = document.getElementById("new-deck-chip-input");
-  if (btnAddChip && newChipInput) {
-    btnAddChip.addEventListener("click", () => {
-      const name = newChipInput.value.trim();
-      if (!name) return;
-      addDeckToChips(name);
-      newChipInput.value = "";
-      newChipInput.focus();
-      showToast(`「${name}」をクイックテーマに追加しました！`);
-    });
-    newChipInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        btnAddChip.click();
-      }
-    });
-  }
-
-  // 初期テーマへのリセットボタン
-  const btnResetChips = document.getElementById("btn-reset-default-chips");
-  if (btnResetChips) {
-    btnResetChips.addEventListener("click", () => {
-      if (!confirm("クイックテーマを初期の定番テーマ一覧に戻しますか？")) return;
-      state.customDecks = [...DEFAULT_POPULAR_DECKS];
-      saveCustomDecks();
-      renderDeckChips();
-      showToast("初期テーマ一覧に戻しました。");
-    });
-  }
-}
-
-function loadCustomDecks() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.CUSTOM_DECKS);
-    if (raw) {
-      state.customDecks = JSON.parse(raw);
-    } else {
-      state.customDecks = [...DEFAULT_POPULAR_DECKS];
-    }
-  } catch (e) {
-    state.customDecks = [...DEFAULT_POPULAR_DECKS];
-  }
-}
-
-function saveCustomDecks() {
-  localStorage.setItem(STORAGE_KEYS.CUSTOM_DECKS, JSON.stringify(state.customDecks));
-}
-
-// テーマをリストに追加（先頭に追加して重複排除）
-function addDeckToChips(deckName) {
-  if (!deckName || deckName === "不明/その他") return;
-  // 既存のリストにあれば削除して先頭に持ってくる
-  state.customDecks = state.customDecks.filter(d => d !== deckName);
-  state.customDecks.unshift(deckName);
-  // 最大30個まで保持
-  if (state.customDecks.length > 30) {
-    state.customDecks = state.customDecks.slice(0, 30);
-  }
-  saveCustomDecks();
-  renderDeckChips();
-}
-
-function renderDeckChips() {
-  elements.quickDeckChips.innerHTML = "";
-
-  // 表示するテーマリスト（ユーザー設定テーマ + 過去対戦テーマをマージ）
-  const allSet = new Set(state.customDecks);
-  state.records.forEach(r => {
-    if (r.opponent_deck && r.opponent_deck !== "不明/その他") {
-      allSet.add(r.opponent_deck);
-    }
-  });
-
-  const displayList = state.customDecks.slice(0, 24);
-
-  displayList.forEach(deckName => {
-    const chipWrapper = document.createElement("span");
-    chipWrapper.style.display = "inline-flex";
-    chipWrapper.style.alignItems = "center";
-    chipWrapper.style.position = "relative";
-
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "chip-btn";
-    chip.textContent = deckName;
-    chip.addEventListener("click", () => {
-      elements.deckInput.value = deckName;
-      elements.deckInput.focus();
-    });
-    chipWrapper.appendChild(chip);
-
-    // 編集モード時の「✕」削除ボタン
-    if (state.isEditingChips) {
-      const deleteBtn = document.createElement("button");
-      deleteBtn.type = "button";
-      deleteBtn.textContent = "✕";
-      deleteBtn.style.cssText = "background:#8b2525; color:#fff; border:none; border-radius:50%; width:16px; height:16px; font-size:10px; cursor:pointer; margin-left:-6px; z-index:2; line-height:1;";
-      deleteBtn.title = "このテーマを削除";
-      deleteBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        state.customDecks = state.customDecks.filter(d => d !== deckName);
-        saveCustomDecks();
-        renderDeckChips();
-      });
-      chipWrapper.appendChild(deleteBtn);
-    }
-
-    elements.quickDeckChips.appendChild(chipWrapper);
-  });
-
-  // datalist (入力補完) には全テーマをセット
-  elements.deckSuggestions.innerHTML = "";
-  Array.from(allSet).forEach(d => {
-    const opt = document.createElement("option");
-    opt.value = d;
-    elements.deckSuggestions.appendChild(opt);
-  });
 }
 
 // ===================================================
@@ -375,24 +403,20 @@ function renderDeckChips() {
 // ===================================================
 function setupActionButtons() {
   elements.btnRecord.addEventListener("click", recordDuel);
-
-  // CSVエクスポート
   elements.btnExportCsv.addEventListener("click", exportCsv);
 
-  // サンプルデータ
   elements.btnSampleData.addEventListener("click", async () => {
-    if (!confirm("テスト用のサンプル対戦記録（10戦分）を石板に追加しますか？")) return;
+    if (!confirm("テスト用のサンプル対戦記録（10戦分）を追加しますか？")) return;
     await addSampleData();
   });
 
-  // 全消去
   elements.btnClearData.addEventListener("click", async () => {
     if (!confirm("⚠️ 本当にすべての決闘記録を初期化しますか？\nこの操作は元に戻せません。")) return;
     await clearAllData();
   });
 }
 
-// モーダル設定 (Firebase連携)
+// モーダル設定
 function setupModal() {
   elements.btnOpenSyncSettings.addEventListener("click", () => {
     elements.syncModal.style.display = "flex";
@@ -401,29 +425,19 @@ function setupModal() {
     elements.syncModal.style.display = "none";
   });
   elements.syncModal.addEventListener("click", (e) => {
-    if (e.target === elements.syncModal) {
-      elements.syncModal.style.display = "none";
-    }
+    if (e.target === elements.syncModal) elements.syncModal.style.display = "none";
   });
 
-  // Firebase設定の保存
   elements.btnSaveFirebase.addEventListener("click", async () => {
     let raw = elements.settingFirebaseConfig.value.trim();
-    if (!raw) {
-      alert("Firebase設定を貼り付けてください。");
-      return;
-    }
+    if (!raw) return alert("Firebase設定を貼り付けてください。");
 
     try {
-      let config = null;
-
-      // 方法1: JavaScriptオブジェクト表記 (const firebaseConfig = { ... };) を安全に評価
       if (raw.includes("{") && raw.includes("}")) {
         const objStr = raw.substring(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
         try {
           config = new Function("return (" + objStr + ")")();
         } catch (e1) {
-          // 方法2: 通常のJSONパース
           const fixedJson = objStr
             .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?\s*:/g, '"$2": ')
             .replace(/'/g, '"');
@@ -433,23 +447,17 @@ function setupModal() {
         config = JSON.parse(raw);
       }
 
-      if (!config || !config.projectId) {
-        throw new Error("無効な設定オブジェクトです");
-      }
-
       localStorage.setItem(STORAGE_KEYS.FIREBASE_CONFIG, JSON.stringify(config));
       showToast("Firebase設定を保存しました。再接続します...");
       elements.syncModal.style.display = "none";
       await initFirebase();
     } catch (err) {
-      console.error("Firebase config parse error:", err);
-      alert("Firebase設定の解析に失敗しました。下の回答に記載されている整形済みJSONコードを貼り付けてみてください。");
+      alert("JSONの解析に失敗しました。正しいコードを貼り付けてください。");
     }
   });
 
-  // Firebase切断
   elements.btnDisconnectFirebase.addEventListener("click", () => {
-    if (!confirm("Firebaseクラウド同期を切断し、ローカルモードに戻しますか？")) return;
+    if (!confirm("Firebase同期を切断し、ローカルモードに戻しますか？")) return;
     localStorage.removeItem(STORAGE_KEYS.FIREBASE_CONFIG);
     if (state.unsubscribeSnapshot) state.unsubscribeSnapshot();
     state.isFirebaseActive = false;
@@ -460,21 +468,23 @@ function setupModal() {
 }
 
 // ===================================================
-// 決闘記録の送信 (Firebase自動同期 / ローカル自動保存)
+// 決闘記録の送信 (自分の使用デッキを含めて保存)
 // ===================================================
 async function recordDuel() {
-  const deck = elements.deckInput.value.trim() || "不明/その他";
+  const myDeck = elements.myDeckSelect.value || "未設定";
+  const oppDeck = elements.opponentDeckSelect.value || "不明/その他";
   const now = new Date();
   const timestamp = formatDateTime(now);
   const dateStr = formatDate(now);
 
   const record = {
-    timestamp: timestamp,
-    date: dateStr,
+    my_deck: myDeck,            // ★自分の使用デッキ
+    opponent_deck: oppDeck,     // 対戦相手のデッキ
     coin: state.coin,
     turn: state.turn,
-    opponent_deck: deck,
     result: state.result,
+    timestamp: timestamp,
+    date: dateStr,
     note: "",
     createdAt: Date.now()
   };
@@ -483,22 +493,15 @@ async function recordDuel() {
     elements.btnRecord.disabled = true;
 
     if (state.isFirebaseActive && state.firestore) {
-      // Firebase Firestoreへ保存 (オフラインでも自動キャッシュされ復帰時自動送信！)
       await state.firestore.collection("duels").add(record);
-      showToast(`「${deck}」との決闘（${record.result === 'win' ? '勝利' : '敗北'}）をクラウドに刻みました！`);
+      showToast(`「${myDeck}」vs「${oppDeck}」（${record.result === 'win' ? '勝利' : '敗北'}）をクラウドに刻みました！`);
     } else {
-      // ローカルモード
       record.id = "local_" + Date.now();
       state.records.unshift(record);
       localStorage.setItem(STORAGE_KEYS.LOCAL_DUELS, JSON.stringify(state.records));
-      showToast(`「${deck}」との決闘をローカル石板に刻みました！`);
+      showToast(`「${myDeck}」vs「${oppDeck}」をローカル石板に刻みました！`);
       updateAllDisplays();
     }
-
-    state.knownDecks.add(deck);
-    addDeckToChips(deck); // ★新しいテーマをクイックチップの先頭に自動追加！
-    elements.deckInput.value = "";
-    elements.deckInput.focus();
 
   } catch (err) {
     console.error("Record duel error:", err);
@@ -523,28 +526,38 @@ window.deleteDuelRecord = async function(id) {
       updateAllDisplays();
     }
   } catch (err) {
-    console.error("Delete duel error:", err);
     alert("削除中にエラーが発生しました。");
   }
 };
 
 // ===================================================
-// 統計計算と画面更新
+// 統計計算と画面更新 (マイデッキ絞り込み対応)
 // ===================================================
 function updateAllDisplays() {
   const todayStr = formatDate(new Date());
   elements.todayDateBadge.textContent = todayStr;
 
+  // ★【当日の戦績】: 要望通り自身の使用デッキは反映させず、全体のまま
   const todayRows = state.records.filter(r => (r.date || r.date_str) === todayStr);
+
+  // ★【通年の戦績】: 選択されたマイデッキで絞り込み
+  let allRows = [...state.records];
+  if (state.selectedMyDeckFilter !== "__ALL__") {
+    allRows = allRows.filter(r => r.my_deck === state.selectedMyDeckFilter);
+    elements.allWinRateLabel.textContent = `「${state.selectedMyDeckFilter}」通算勝率`;
+  } else {
+    elements.allWinRateLabel.textContent = "通算勝率 (全体)";
+  }
 
   const stats = {
     today_date: todayStr,
-    all_time: calculateStats(state.records),
+    all_time: calculateStats(allRows),
     today: calculateStats(todayRows)
   };
 
   renderStats(stats);
   renderHistoryTable(state.records.slice(0, 50));
+  renderMyDeckFilterOptions();
 }
 
 function calculateStats(rows) {
@@ -577,6 +590,7 @@ function calculateStats(rows) {
   const second_wins = rows.filter(r => r.turn === "second" && r.result === "win").length;
   const second_win_rate = second_turns > 0 ? round((second_wins / second_turns) * 100, 1) : 0.0;
 
+  // 相手デッキ別集計
   const decks_map = {};
   rows.forEach(r => {
     const d = r.opponent_deck || "不明/その他";
@@ -674,7 +688,7 @@ function renderDeckStatsTable() {
 
 function renderHistoryTable(duels) {
   if (!duels || duels.length === 0) {
-    elements.historyTbody.innerHTML = `<tr class="empty-row"><td colspan="6">まだ決闘の記録がありません。</td></tr>`;
+    elements.historyTbody.innerHTML = `<tr class="empty-row"><td colspan="7">まだ決闘の記録がありません。</td></tr>`;
     return;
   }
 
@@ -687,10 +701,12 @@ function renderHistoryTable(duels) {
     const coinText = d.coin === "heads" ? "🪙 表" : "🪙 裏";
     const turnText = d.turn === "first" ? "⚔️ 先攻" : "🛡️ 後攻";
     const timeStr = (d.timestamp || "").substring(5, 16);
+    const myDeckText = d.my_deck || "未設定";
 
     return `
       <tr>
         <td><span class="badge-tag">${timeStr}</span></td>
+        <td><span class="badge-tag" style="color:var(--gold-bright);">👑 ${escapeHtml(myDeckText)}</span></td>
         <td>${resultBadge}</td>
         <td>${coinText}</td>
         <td>${turnText}</td>
@@ -705,28 +721,28 @@ function renderHistoryTable(duels) {
   }).join("");
 }
 
-// サンプルデータ追加
+// サンプルデータ追加 (マイデッキ付き)
 async function addSampleData() {
   const todayStr = formatDate(new Date());
   const samples = [
-    { coin: "heads", turn: "first", opponent_deck: "スネークアイ", result: "win" },
-    { coin: "heads", turn: "first", opponent_deck: "粛声", result: "win" },
-    { coin: "tails", turn: "second", opponent_deck: "天盃龍", result: "lose" },
-    { coin: "heads", turn: "first", opponent_deck: "ユベル", result: "win" },
-    { coin: "tails", turn: "second", opponent_deck: "ラビュリンス", result: "win" },
-    { coin: "heads", turn: "first", opponent_deck: "神碑", result: "lose" },
-    { coin: "heads", turn: "first", opponent_deck: "センチュリオン", result: "win" },
-    { coin: "tails", turn: "second", opponent_deck: "R-ACE", result: "win" },
-    { coin: "heads", turn: "first", opponent_deck: "ティアラメンツ", result: "win" },
-    { coin: "tails", turn: "second", opponent_deck: "スネークアイ", result: "lose" }
+    { my_deck: "ブラックマジシャン", opponent_deck: "青眼の白龍", coin: "heads", turn: "first", result: "win" },
+    { my_deck: "ブラックマジシャン", opponent_deck: "烙印", coin: "heads", turn: "first", result: "win" },
+    { my_deck: "ブラックマジシャン", opponent_deck: "獄神", coin: "tails", turn: "second", result: "lose" },
+    { my_deck: "青眼の白龍", opponent_deck: "ウィッチクラフト", coin: "heads", turn: "first", result: "win" },
+    { my_deck: "青眼の白龍", opponent_deck: "ゴブリンライダー", coin: "tails", turn: "second", result: "win" },
+    { my_deck: "青眼の白龍", opponent_deck: "巳剣", coin: "heads", turn: "first", result: "lose" },
+    { my_deck: "六花", opponent_deck: "ヤミー", coin: "heads", turn: "first", result: "win" },
+    { my_deck: "六花", opponent_deck: "ドラゴンテイル", coin: "tails", turn: "second", result: "win" },
+    { my_deck: "ブリッツクリーク", opponent_deck: "ヘカトンケイル", coin: "heads", turn: "first", result: "win" },
+    { my_deck: "ブリッツクリーク", opponent_deck: "道化の一座", coin: "tails", turn: "second", result: "lose" }
   ];
 
   for (let i = 0; i < samples.length; i++) {
     const s = samples[i];
     const rec = {
+      ...s,
       timestamp: formatDateTime(new Date(Date.now() - (samples.length - i) * 60000)),
       date: todayStr,
-      ...s,
       note: "",
       createdAt: Date.now() - (samples.length - i) * 60000
     };
@@ -746,7 +762,6 @@ async function addSampleData() {
   showToast("サンプルデータ（10戦分）を追加しました！");
 }
 
-// 全データ初期化
 async function clearAllData() {
   if (state.isFirebaseActive && state.firestore) {
     const snapshot = await state.firestore.collection("duels").get();
@@ -762,18 +777,15 @@ async function clearAllData() {
   }
 }
 
-// CSVエクスポート
 function exportCsv() {
-  if (state.records.length === 0) {
-    alert("エクスポートする記録がありません。");
-    return;
-  }
-  let csv = "\uFEFF日時,日付,コイントス,先攻後攻,対戦相手デッキ,勝敗\n";
+  if (state.records.length === 0) return alert("エクスポートする記録がありません。");
+  let csv = "\uFEFF日時,日付,自分の使用デッキ,コイントス,先攻後攻,対戦相手デッキ,勝敗\n";
   state.records.forEach(r => {
     const coin = r.coin === "heads" ? "表" : "裏";
     const turn = r.turn === "first" ? "先攻" : "後攻";
     const res = r.result === "win" ? "勝利" : "敗北";
-    csv += `"${r.timestamp}","${r.date || r.date_str}","${coin}","${turn}","${r.opponent_deck}","${res}"\n`;
+    const myDeck = r.my_deck || "未設定";
+    csv += `"${r.timestamp}","${r.date || r.date_str}","${myDeck}","${coin}","${turn}","${r.opponent_deck}","${res}"\n`;
   });
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);

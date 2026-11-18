@@ -24,27 +24,14 @@
     <!-- 上部ステータスバー (同期状態・スマホ連携) -->
     <div class="top-status-bar">
       <div class="sync-status" id="connection-status-pill">
-        <span class="status-indicator online" id="status-dot"></span>
-        <span id="status-text">PC接続中</span>
+        <span class="status-indicator offline" id="status-dot"></span>
+        <span id="status-text">ローカル保存モード</span>
       </div>
       <div class="top-status-actions">
-        <button type="button" class="btn-top-util" id="btn-open-sync-settings" title="PC接続先とスマホ連携の設定">
+        <button type="button" class="btn-top-util" id="btn-open-sync-settings" title="Firebase設定">
           ⚙️ 連携設定
         </button>
       </div>
-    </div>
-
-    <!-- 未同期データ通知バナー（外出先で記録したデータがある時だけ出現） -->
-    <div class="sync-alert-banner" id="sync-banner" style="display: none;">
-      <div class="sync-banner-content">
-        <span class="banner-icon">⚡</span>
-        <div class="banner-text">
-          外出先で記録した未同期データが <strong id="unsynced-count">0</strong> 件あります。
-        </div>
-      </div>
-      <button type="button" class="btn-sync-now" id="btn-sync-now">
-        <span class="sync-icon">𓂀</span> 自宅PCと同期する
-      </button>
     </div>
 
     <!-- ヘッダー -->
@@ -97,7 +84,7 @@
           <div class="form-group">
             <label class="group-label">
               <span class="label-icon">🪙</span>
-              入力①：コイントス結果
+              コイントス結果
             </label>
             <div class="toggle-buttons coin-group">
               <button type="button" class="btn-toggle active" data-name="coin" data-value="heads">
@@ -117,7 +104,7 @@
           <div class="form-group">
             <label class="group-label">
               <span class="label-icon">⚔️</span>
-              入力②：先攻・後攻
+              先攻・後攻
             </label>
             <div class="toggle-buttons turn-group">
               <button type="button" class="btn-toggle active" data-name="turn" data-value="first">
@@ -133,40 +120,48 @@
             </div>
           </div>
 
-          <!-- 入力③：対戦相手のデッキタイプ -->
+          <!-- 新規追加：自分の使用デッキ -->
           <div class="form-group">
-            <label class="group-label" for="deck-input">
-              <span class="label-icon">📜</span>
-              入力③：対戦相手のデッキタイプ
-            </label>
-            <div class="input-wrapper">
-              <input type="text" id="deck-input" class="ancient-input" placeholder="例：スネークアイ、粛声、天盃龍..." list="deck-suggestions" autocomplete="off" />
-              <datalist id="deck-suggestions"></datalist>
-              <button type="button" id="btn-clear-deck" class="btn-clear" title="クリア">✕</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="group-label" for="my-deck-select" style="margin-bottom: 0;">
+                <span class="label-icon">👑</span>
+                自分の使用デッキ (MY DECK)
+              </label>
+              <button type="button" id="btn-toggle-add-theme" class="btn-text-link">
+                ＋ テーマ追加
+              </button>
             </div>
-            
-            <!-- クイックデッキ選択チップ -->
-            <div class="quick-decks-container">
-              <div class="quick-decks-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <span class="quick-decks-title" style="margin-bottom: 0;">よく使われるテーマ (タップで入力 / 自動追加):</span>
-                <button type="button" id="btn-toggle-edit-chips" class="btn-sub-action" style="font-size: 10px; padding: 2px 6px;">
-                  ✏️ テーマ編集
-                </button>
+            <div class="select-wrapper">
+              <select id="my-deck-select" class="ancient-select">
+                <!-- JSで五十音順テーマを展開 -->
+              </select>
+            </div>
+          </div>
+
+          <!-- 入力③：対戦相手のデッキタイプ (プルダウン方式) -->
+          <div class="form-group">
+            <label class="group-label" for="opponent-deck-select">
+              <span class="label-icon">📜</span>
+              対戦相手のデッキテーマ (OPPONENT DECK)
+            </label>
+            <div class="select-wrapper">
+              <select id="opponent-deck-select" class="ancient-select">
+                <!-- JSで五十音順テーマを展開 -->
+              </select>
+            </div>
+
+            <!-- テーマ追加・管理パネル (折りたたみ式) -->
+            <div id="theme-manager-panel" class="theme-manager-panel" style="display: none;">
+              <div class="theme-manager-title">新規テーマの登録 (五十音順に自動配置):</div>
+              <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+                <input type="text" id="new-theme-input" class="ancient-input" placeholder="テーマ名を入力 (例: 閃刀姫)..." style="padding: 7px 10px; font-size: 13px;">
+                <button type="button" id="btn-add-theme" class="btn-gold-mini">追加</button>
               </div>
-              <div class="quick-deck-chips" id="quick-deck-chips"></div>
-              
-              <!-- テーマ編集フォーム (普段は非表示) -->
-              <div id="deck-edit-panel" style="display: none; margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.5); border: 1px dashed var(--gold-primary); border-radius: 4px;">
-                <div style="display: flex; gap: 6px; margin-bottom: 6px;">
-                  <input type="text" id="new-deck-chip-input" class="ancient-input" placeholder="新しいテーマ名を追加..." style="padding: 6px 8px; font-size: 12px;">
-                  <button type="button" id="btn-add-custom-chip" class="btn-sub-action" style="white-space: nowrap; font-size: 11px;">追加</button>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <span style="font-size: 10px; color: var(--papyrus-muted);">※チップ上の「✕」を押すと削除できます</span>
-                  <button type="button" id="btn-reset-default-chips" style="background: none; border: none; color: #ff9d9d; font-size: 10px; cursor: pointer; text-decoration: underline;">
-                    初期テーマに戻す
-                  </button>
-                </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="theme-hint">※追加されたテーマは自分・相手の両方のプールに反映されます</span>
+                <button type="button" id="btn-reset-themes" class="btn-danger-link">
+                  初期テーマにリセット
+                </button>
               </div>
             </div>
           </div>
@@ -175,7 +170,7 @@
           <div class="form-group">
             <label class="group-label">
               <span class="label-icon">🏆</span>
-              入力④：決闘の結果（勝敗）
+              決闘の結果（勝敗）
             </label>
             <div class="toggle-buttons result-group">
               <button type="button" class="btn-toggle result-btn win active" data-name="result" data-value="win">
@@ -206,7 +201,7 @@
       <!-- 右列：統計表示石板 -->
       <section class="stats-column">
         
-        <!-- 当日の戦績石板 -->
+        <!-- 当日の戦績石板 (※自身の使用デッキは反映させず全体のまま) -->
         <div class="tablet-card stats-card today-card">
           <div class="card-corner tl"></div>
           <div class="card-corner tr"></div>
@@ -255,7 +250,7 @@
           </div>
         </div>
 
-        <!-- 通年の戦績石板 -->
+        <!-- 通年の戦績石板 (※自分の使用デッキ別絞り込みフィルター付き) -->
         <div class="tablet-card stats-card alltime-card">
           <div class="card-corner tl"></div>
           <div class="card-corner tr"></div>
@@ -272,9 +267,18 @@
             </div>
           </div>
 
+          <!-- 使用デッキ別フィルター -->
+          <div class="my-deck-filter-bar">
+            <span class="filter-label">👑 使用デッキ絞り込み:</span>
+            <select id="my-deck-filter-select" class="ancient-select filter-select">
+              <option value="__ALL__">すべての使用デッキ (全体通算)</option>
+              <!-- JSで登録済み使用デッキを展開 -->
+            </select>
+          </div>
+
           <div class="stat-boxes-grid mini">
             <div class="stat-box highlight-small">
-              <div class="stat-label">通算勝率</div>
+              <div class="stat-label" id="all-win-rate-label">通算勝率</div>
               <div class="stat-value gold" id="all-win-rate">0.0%</div>
               <div class="stat-detail" id="all-win-detail">0勝 0敗</div>
             </div>
@@ -290,7 +294,7 @@
             </div>
           </div>
 
-          <!-- 当たったデッキタイプとその勝率 -->
+          <!-- 当たった相手デッキタイプとその勝率 -->
           <div class="deck-stats-section">
             <div class="deck-section-header">
               <h3 class="section-subheading">
@@ -299,7 +303,7 @@
               </h3>
               
               <div class="deck-controls">
-                <input type="text" id="deck-filter-input" class="search-input" placeholder="デッキ名で絞り込み..." />
+                <input type="text" id="deck-filter-input" class="search-input" placeholder="相手デッキ名で絞り込み..." />
                 <select id="deck-sort-select" class="sort-select">
                   <option value="duels_desc">対戦数 多い順</option>
                   <option value="winrate_desc">勝率 高い順</option>
@@ -313,7 +317,7 @@
               <table class="ancient-table" id="deck-stats-table">
                 <thead>
                   <tr>
-                    <th>デッキタイプ</th>
+                    <th>相手デッキタイプ</th>
                     <th class="th-center">対戦数</th>
                     <th class="th-center">勝 - 敗</th>
                     <th class="th-center">勝率</th>
@@ -351,7 +355,7 @@
           <button type="button" id="btn-export-csv" class="btn-sub-action" title="CSVとして保存">
             📥 CSV出力
           </button>
-          <button type="button" id="btn-sample-data" class="btn-sub-action" title="動作確認用の10戦分サンプルデータを追加">
+          <button type="button" id="btn-sample-data" class="btn-sub-action" title="動作確認用のサンプルデータを追加">
             ✨ サンプル追加
           </button>
           <button type="button" id="btn-clear-data" class="btn-sub-danger" title="すべての記録を削除">
@@ -365,6 +369,7 @@
           <thead>
             <tr>
               <th>日時</th>
+              <th>使用デッキ</th>
               <th>勝敗</th>
               <th>コイントス</th>
               <th>ターン</th>
@@ -374,7 +379,7 @@
           </thead>
           <tbody id="history-tbody">
             <tr class="empty-row">
-              <td colspan="6">履歴がありません。</td>
+              <td colspan="7">履歴がありません。</td>
             </tr>
           </tbody>
         </table>
@@ -398,27 +403,24 @@
 
         <div class="modal-body">
           <div class="info-block">
-            <div class="info-title">☁️ Firebaseクラウド同期のメリット</div>
+            <div class="info-title">☁️ Firebaseクラウド同期</div>
             <p class="info-desc">
-              Firebaseを接続すると、<strong>PCを起動していなくても</strong>スマホとPC間で対戦データが完全自動同期されます。外出先で記録したデータも、電波が繋がり次第自動でクラウドに反映されます。
+              Firebaseを接続すると、PCとスマホ間で対戦データが完全自動同期されます。
             </p>
           </div>
 
           <div class="setting-form-block">
             <label class="group-label" for="setting-firebase-config">
-              Firebase設定 (firebaseConfig の JSONまたは貼り付け)
+              Firebase設定コード (整形済みJSON)
             </label>
-            <textarea id="setting-firebase-config" class="ancient-input" style="height: 120px; font-size: 11px; font-family: monospace;" placeholder='const firebaseConfig = {
-  apiKey: "...",
-  authDomain: "...",
-  projectId: "...",
-  storageBucket: "...",
-  messagingSenderId: "...",
-  appId: "..."
-};'></textarea>
-            <p class="info-sub" style="margin-top: 4px;">
-              ※Firebaseコンソールで取得した構成コードをそのまま貼り付けて「保存して接続」を押してください。
-            </p>
+            <textarea id="setting-firebase-config" class="ancient-input" style="height: 120px; font-size: 11px; font-family: monospace;" placeholder='{
+  "apiKey": "...",
+  "authDomain": "...",
+  "projectId": "...",
+  "storageBucket": "...",
+  "messagingSenderId": "...",
+  "appId": "..."
+}'></textarea>
           </div>
 
           <div class="sync-actions-block" style="display: flex; gap: 8px;">
@@ -430,9 +432,6 @@
               切断
             </button>
           </div>
-
-          <!-- 通信状態表示 -->
-          <div id="firebase-status-msg" style="margin-top: 10px; font-size: 12px; text-align: center; color: var(--gold-light);"></div>
         </div>
       </div>
     </div>

@@ -10,7 +10,7 @@
   <meta name="theme-color" content="#d4af37">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=4">
   <!-- Firebase SDK (互換モード) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -138,7 +138,7 @@
                 <span class="trigger-label" id="label-my-deck">選択してください</span>
                 <span class="trigger-arrow">▼</span>
               </div>
-              <div class="dropdown-menu" id="menu-my-deck"></div>
+              <div class="dropdown-menu" id="menu-my-deck" style="display: none;"></div>
             </div>
           </div>
 
@@ -155,7 +155,7 @@
                 <span class="trigger-label" id="label-opp-deck">選択してください</span>
                 <span class="trigger-arrow">▼</span>
               </div>
-              <div class="dropdown-menu" id="menu-opp-deck"></div>
+              <div class="dropdown-menu" id="menu-opp-deck" style="display: none;"></div>
             </div>
 
             <!-- テーマ追加＆削除パネル (折りたたみ式) -->
@@ -293,7 +293,7 @@
                 <span class="trigger-label" id="label-filter-deck">すべての使用デッキ (全体通算)</span>
                 <span class="trigger-arrow">▼</span>
               </div>
-              <div class="dropdown-menu" id="menu-filter-deck"></div>
+              <div class="dropdown-menu" id="menu-filter-deck" style="display: none;"></div>
             </div>
           </div>
 
@@ -465,6 +465,6 @@
 
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

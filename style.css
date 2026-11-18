@@ -1031,13 +1031,13 @@ body {
   background: linear-gradient(180deg, #201912 0%, #110e0a 100%);
   border: 1px solid var(--gold-primary);
   border-radius: 4px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.9), 0 0 15px rgba(212, 175, 55, 0.2);
-  z-index: 50;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.95), 0 0 15px rgba(212, 175, 55, 0.25);
+  z-index: 100;
   display: none;
 }
 
 .custom-dropdown.open .dropdown-menu {
-  display: block;
+  display: block !important;
 }
 
 .dropdown-item {
@@ -1048,8 +1048,9 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid rgba(140, 109, 35, 0.15);
+  border-bottom: 1px solid rgba(140, 109, 35, 0.2);
   transition: all 0.15s ease;
+  background: transparent;
 }
 
 .dropdown-item:last-child {
@@ -1057,20 +1058,20 @@ body {
 }
 
 .dropdown-item:hover {
-  background: linear-gradient(90deg, rgba(212, 175, 55, 0.2) 0%, rgba(212, 175, 55, 0.05) 100%);
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.25) 0%, rgba(212, 175, 55, 0.08) 100%);
   color: #fff;
   padding-left: 18px;
 }
 
 .dropdown-item.selected {
-  background: rgba(212, 175, 55, 0.15);
+  background: rgba(212, 175, 55, 0.2);
   color: var(--gold-bright);
   font-weight: 700;
 }
 .dropdown-item.selected::after {
   content: "✔";
   color: var(--gold-bright);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 /* フィルター用小型ドロップダウン */
@@ -1084,15 +1085,15 @@ body {
 }
 
 /* ===================================================
-   テーマ追加・削除パネル
+   テーマ追加・削除パネル (灰色を完全排除し、古代石板砂岩カラーに統一)
 =================================================== */
 .theme-manager-panel {
   margin-top: 10px;
-  padding: 12px 14px;
-  background: rgba(14, 11, 8, 0.95);
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #241c14 0%, #140f0a 100%);
   border: 1px solid var(--gold-primary);
   border-radius: 4px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.9), inset 0 0 20px rgba(0, 0, 0, 0.8);
 }
 
 .theme-manager-header {
@@ -1102,31 +1103,34 @@ body {
 .theme-manager-title {
   font-size: 12px;
   font-weight: 700;
-  color: var(--gold-light);
+  color: var(--gold-bright);
+  letter-spacing: 0.5px;
 }
 
 .theme-tags-container {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  max-height: 120px;
+  max-height: 130px;
   overflow-y: auto;
-  padding: 4px;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid #4a3821;
+  padding: 8px;
+  background: #100c08;
+  border: 1px solid #5a4529;
   border-radius: 4px;
   margin-bottom: 8px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.8);
 }
 
 .theme-tag {
   display: inline-flex;
   align-items: center;
-  background: #241c14;
-  border: 1px solid #634d2c;
-  color: #ecd9ba;
-  padding: 3px 8px;
+  background: linear-gradient(180deg, #332619 0%, #1d160e 100%);
+  border: 1px solid #8c6d23;
+  color: #fbeea4;
+  padding: 4px 10px;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
 .btn-tag-delete {
@@ -1137,14 +1141,14 @@ body {
   font-size: 11px;
   cursor: pointer;
   margin-left: 6px;
-  padding: 0 2px;
+  padding: 2px 4px;
   border-radius: 50%;
   line-height: 1;
   transition: all 0.15s ease;
 }
 .btn-tag-delete:hover {
   color: #fff;
-  background-color: #ff5252;
+  background-color: #c53030;
 }
 
 /* ===================================================

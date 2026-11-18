@@ -310,18 +310,25 @@ function setupCustomDropdowns() {
 
 function setupSingleDropdown(dropdownEl) {
   const trigger = dropdownEl.querySelector(".dropdown-trigger");
+  const menu = dropdownEl.querySelector(".dropdown-menu");
+
   trigger.addEventListener("click", (e) => {
     e.stopPropagation();
-    const isOpen = dropdownEl.classList.contains("open");
+    const isOpen = menu.style.display === "block" || dropdownEl.classList.contains("open");
     closeAllDropdowns();
     if (!isOpen) {
       dropdownEl.classList.add("open");
+      menu.style.display = "block";
     }
   });
 }
 
 function closeAllDropdowns() {
-  document.querySelectorAll(".custom-dropdown").forEach(d => d.classList.remove("open"));
+  document.querySelectorAll(".custom-dropdown").forEach(d => {
+    d.classList.remove("open");
+    const menu = d.querySelector(".dropdown-menu");
+    if (menu) menu.style.display = "none";
+  });
 }
 
 function updateDropdownLabels() {

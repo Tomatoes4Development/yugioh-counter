@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>決闘記録石板 - 遊戯王マスターデュエル カウンター</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <meta name="theme-color" content="#d4af37">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="style.css">
+  <!-- Firebase SDK (互換モード) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <div class="ancient-container">
+    <!-- 背景装飾オーラ -->
+    <div class="bg-glow"></div>
+    <div class="hieroglyph-bg"></div>
+
+    <!-- 上部ステータスバー (同期状態・スマホ連携) -->
+    <div class="top-status-bar">
+      <div class="sync-status" id="connection-status-pill">
+        <span class="status-indicator online" id="status-dot"></span>
+        <span id="status-text">PC接続中</span>
+      </div>
+      <div class="top-status-actions">
+        <button type="button" class="btn-top-util" id="btn-open-sync-settings" title="PC接続先とスマホ連携の設定">
+          ⚙️ 連携設定
+        </button>
+      </div>
+    </div>
+
+    <!-- 未同期データ通知バナー（外出先で記録したデータがある時だけ出現） -->
+    <div class="sync-alert-banner" id="sync-banner" style="display: none;">
+      <div class="sync-banner-content">
+        <span class="banner-icon">⚡</span>
+        <div class="banner-text">
+          外出先で記録した未同期データが <strong id="unsynced-count">0</strong> 件あります。
+        </div>
+      </div>
+      <button type="button" class="btn-sync-now" id="btn-sync-now">
+        <span class="sync-icon">𓂀</span> 自宅PCと同期する
+      </button>
+    </div>
+
+    <!-- ヘッダー -->
+    <header class="pharaoh-header">
+      <div class="header-emblem left">
+        <svg viewBox="0 0 100 100" class="eye-of-horus">
+          <path d="M10,50 Q50,20 90,50 Q50,80 10,50 Z" fill="none" stroke="currentColor" stroke-width="5"/>
+          <circle cx="50" cy="50" r="14" fill="currentColor"/>
+          <path d="M50,64 L50,92 M50,75 Q70,75 80,95" fill="none" stroke="currentColor" stroke-width="5"/>
+          <path d="M25,37 Q40,30 50,30" fill="none" stroke="currentColor" stroke-width="4"/>
+        </svg>
+      </div>
+
+      <div class="title-group">
+        <div class="sub-title">MASTER DUEL RECORD TABLET</div>
+        <h1 class="main-title">
+          <span class="gold-gradient">決闘石板</span>
+          <span class="title-sub-text">― 千年の記憶 ―</span>
+        </h1>
+        <div class="hieroglyph-divider">𓀀 𓁐 𓃠 𓅓 𓆣 𓇋 𓈖 𓊪 𓋹 𓍯 𓎛 𓏏</div>
+      </div>
+
+      <div class="header-emblem right">
+        <svg viewBox="0 0 100 100" class="ankh-symbol">
+          <ellipse cx="50" cy="32" rx="16" ry="20" fill="none" stroke="currentColor" stroke-width="5"/>
+          <line x1="50" y1="52" x2="50" y2="92" stroke="currentColor" stroke-width="6"/>
+          <line x1="28" y1="62" x2="72" y2="62" stroke="currentColor" stroke-width="6"/>
+        </svg>
+      </div>
+    </header>
+
+    <!-- メイングリッド -->
+    <main class="main-layout">
+      
+      <!-- 左列：対戦入力石板（入力フォーム） -->
+      <section class="tablet-card record-card">
+        <div class="card-corner tl"></div>
+        <div class="card-corner tr"></div>
+        <div class="card-corner bl"></div>
+        <div class="card-corner br"></div>
+
+        <h2 class="card-heading">
+          <span class="ankh-mini">𓋹</span>
+          新たな決闘を石板に刻む
+        </h2>
+
+        <form id="duel-form" onsubmit="return false;">
+          
+          <!-- 入力①：コイントス -->
+          <div class="form-group">
+            <label class="group-label">
+              <span class="label-icon">🪙</span>
+              入力①：コイントス結果
+            </label>
+            <div class="toggle-buttons coin-group">
+              <button type="button" class="btn-toggle active" data-name="coin" data-value="heads">
+                <span class="btn-symbol">𓇋</span>
+                <span class="btn-text">表 (HEADS)</span>
+                <span class="btn-sub">先攻権獲得</span>
+              </button>
+              <button type="button" class="btn-toggle" data-name="coin" data-value="tails">
+                <span class="btn-symbol">𓈖</span>
+                <span class="btn-text">裏 (TAILS)</span>
+                <span class="btn-sub">相手が選択</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 入力②：先攻・後攻 -->
+          <div class="form-group">
+            <label class="group-label">
+              <span class="label-icon">⚔️</span>
+              入力②：先攻・後攻
+            </label>
+            <div class="toggle-buttons turn-group">
+              <button type="button" class="btn-toggle active" data-name="turn" data-value="first">
+                <span class="btn-symbol">Ⅰ</span>
+                <span class="btn-text">先攻 (FIRST)</span>
+                <span class="btn-sub">ターン1展開</span>
+              </button>
+              <button type="button" class="btn-toggle" data-name="turn" data-value="second">
+                <span class="btn-symbol">Ⅱ</span>
+                <span class="btn-text">後攻 (SECOND)</span>
+                <span class="btn-sub">捲くり・ワンキル</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 入力③：対戦相手のデッキタイプ -->
+          <div class="form-group">
+            <label class="group-label" for="deck-input">
+              <span class="label-icon">📜</span>
+              入力③：対戦相手のデッキタイプ
+            </label>
+            <div class="input-wrapper">
+              <input type="text" id="deck-input" class="ancient-input" placeholder="例：スネークアイ、粛声、天盃龍..." list="deck-suggestions" autocomplete="off" />
+              <datalist id="deck-suggestions"></datalist>
+              <button type="button" id="btn-clear-deck" class="btn-clear" title="クリア">✕</button>
+            </div>
+            
+            <!-- クイックデッキ選択チップ -->
+            <div class="quick-decks-container">
+              <div class="quick-decks-title">よく使われるテーマ / クイック選択:</div>
+              <div class="quick-deck-chips" id="quick-deck-chips"></div>
+            </div>
+          </div>
+
+          <!-- 入力④：勝敗 -->
+          <div class="form-group">
+            <label class="group-label">
+              <span class="label-icon">🏆</span>
+              入力④：決闘の結果（勝敗）
+            </label>
+            <div class="toggle-buttons result-group">
+              <button type="button" class="btn-toggle result-btn win active" data-name="result" data-value="win">
+                <span class="btn-symbol">👑</span>
+                <span class="btn-text">勝利 (VICTORY)</span>
+              </button>
+              <button type="button" class="btn-toggle result-btn lose" data-name="result" data-value="lose">
+                <span class="btn-symbol">💀</span>
+                <span class="btn-text">敗北 (DEFEAT)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 登録ボタン -->
+          <div class="submit-wrapper">
+            <button type="button" id="btn-record" class="btn-gold-action">
+              <span class="action-icon">𓊪</span>
+              <span class="action-text">決闘の記憶を石板に刻む</span>
+              <span class="action-sub">(RECORD DUEL)</span>
+            </button>
+          </div>
+
+        </form>
+
+        <div id="toast-message" class="toast-message"></div>
+      </section>
+
+      <!-- 右列：統計表示石板 -->
+      <section class="stats-column">
+        
+        <!-- 当日の戦績石板 -->
+        <div class="tablet-card stats-card today-card">
+          <div class="card-corner tl"></div>
+          <div class="card-corner tr"></div>
+          <div class="card-corner bl"></div>
+          <div class="card-corner br"></div>
+
+          <div class="card-header-flex">
+            <h2 class="card-heading gold">
+              <span class="heading-icon">☀️</span>
+              当日の戦績 <span class="badge-date" id="today-date-badge">TODAY</span>
+            </h2>
+            <div class="today-count-badge">
+              当日 <span id="today-total-duels" class="count-num">0</span> 試合
+            </div>
+          </div>
+
+          <div class="stat-boxes-grid">
+            <div class="stat-box main-highlight">
+              <div class="stat-label">当日勝率</div>
+              <div class="stat-value gold" id="today-win-rate">0.0%</div>
+              <div class="stat-detail" id="today-win-detail">0勝 0敗</div>
+            </div>
+
+            <div class="stat-box">
+              <div class="stat-label">コイントス表率</div>
+              <div class="stat-value" id="today-coin-rate">0.0%</div>
+              <div class="stat-detail" id="today-coin-detail">表 0回 / 裏 0回</div>
+            </div>
+
+            <div class="stat-box">
+              <div class="stat-label">先攻率</div>
+              <div class="stat-value" id="today-first-rate">0.0%</div>
+              <div class="stat-detail" id="today-first-detail">先攻 0回 / 後攻 0回</div>
+            </div>
+
+            <div class="stat-box sub-rates">
+              <div class="stat-sub-row">
+                <span class="sub-label">先攻時勝率:</span>
+                <span class="sub-val" id="today-first-win-rate">0.0%</span>
+              </div>
+              <div class="stat-sub-row">
+                <span class="sub-label">後攻時勝率:</span>
+                <span class="sub-val" id="today-second-win-rate">0.0%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 通年の戦績石板 -->
+        <div class="tablet-card stats-card alltime-card">
+          <div class="card-corner tl"></div>
+          <div class="card-corner tr"></div>
+          <div class="card-corner bl"></div>
+          <div class="card-corner br"></div>
+
+          <div class="card-header-flex">
+            <h2 class="card-heading gold">
+              <span class="heading-icon">🏛️</span>
+              通年の記録 (通算戦績)
+            </h2>
+            <div class="alltime-count-badge">
+              通算 <span id="all-total-duels" class="count-num">0</span> 試合
+            </div>
+          </div>
+
+          <div class="stat-boxes-grid mini">
+            <div class="stat-box highlight-small">
+              <div class="stat-label">通算勝率</div>
+              <div class="stat-value gold" id="all-win-rate">0.0%</div>
+              <div class="stat-detail" id="all-win-detail">0勝 0敗</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">通算コイン表率</div>
+              <div class="stat-value" id="all-coin-rate">0.0%</div>
+              <div class="stat-detail" id="all-coin-detail">表 0 / 裏 0</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">通算先攻率</div>
+              <div class="stat-value" id="all-first-rate">0.0%</div>
+              <div class="stat-detail" id="all-first-detail">先 0 / 後 0</div>
+            </div>
+          </div>
+
+          <!-- 当たったデッキタイプとその勝率 -->
+          <div class="deck-stats-section">
+            <div class="deck-section-header">
+              <h3 class="section-subheading">
+                <span class="scroll-icon">📜</span>
+                対戦相手デッキタイプ別 勝率一覧
+              </h3>
+              
+              <div class="deck-controls">
+                <input type="text" id="deck-filter-input" class="search-input" placeholder="デッキ名で絞り込み..." />
+                <select id="deck-sort-select" class="sort-select">
+                  <option value="duels_desc">対戦数 多い順</option>
+                  <option value="winrate_desc">勝率 高い順</option>
+                  <option value="winrate_asc">勝率 低い順</option>
+                  <option value="name_asc">デッキ名 昇順</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-container">
+              <table class="ancient-table" id="deck-stats-table">
+                <thead>
+                  <tr>
+                    <th>デッキタイプ</th>
+                    <th class="th-center">対戦数</th>
+                    <th class="th-center">勝 - 敗</th>
+                    <th class="th-center">勝率</th>
+                    <th class="th-gauge">勝率ゲージ</th>
+                  </tr>
+                </thead>
+                <tbody id="deck-stats-tbody">
+                  <tr class="empty-row">
+                    <td colspan="5">まだ対戦記録がありません。決闘を記録してください。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+    </main>
+
+    <!-- 下部：対戦履歴（最新の決闘記録） -->
+    <section class="tablet-card history-card">
+      <div class="card-corner tl"></div>
+      <div class="card-corner tr"></div>
+      <div class="card-corner bl"></div>
+      <div class="card-corner br"></div>
+
+      <div class="history-header">
+        <h2 class="card-heading">
+          <span class="heading-icon">📖</span>
+          直近の決闘履歴
+        </h2>
+        <div class="history-actions">
+          <button type="button" id="btn-export-csv" class="btn-sub-action" title="CSVとして保存">
+            📥 CSV出力
+          </button>
+          <button type="button" id="btn-sample-data" class="btn-sub-action" title="動作確認用の10戦分サンプルデータを追加">
+            ✨ サンプル追加
+          </button>
+          <button type="button" id="btn-clear-data" class="btn-sub-danger" title="すべての記録を削除">
+            ⚠️ 全データ初期化
+          </button>
+        </div>
+      </div>
+
+      <div class="table-container log-container">
+        <table class="ancient-table log-table" id="history-table">
+          <thead>
+            <tr>
+              <th>日時</th>
+              <th>勝敗</th>
+              <th>コイントス</th>
+              <th>ターン</th>
+              <th>対戦相手デッキ</th>
+              <th class="th-center">操作</th>
+            </tr>
+          </thead>
+          <tbody id="history-tbody">
+            <tr class="empty-row">
+              <td colspan="6">履歴がありません。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 設定・Firebase連携モーダル -->
+    <div class="modal-overlay" id="sync-modal" style="display: none;">
+      <div class="ancient-modal tablet-card" style="max-height: 90vh; overflow-y: auto;">
+        <div class="card-corner tl"></div>
+        <div class="card-corner tr"></div>
+        <div class="card-corner bl"></div>
+        <div class="card-corner br"></div>
+        
+        <div class="modal-header">
+          <h3 class="card-heading gold">
+            <span class="heading-icon">🔥</span> クラウド同期 (Firebase) 設定
+          </h3>
+          <button type="button" class="btn-close-modal" id="btn-close-modal">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="info-block">
+            <div class="info-title">☁️ Firebaseクラウド同期のメリット</div>
+            <p class="info-desc">
+              Firebaseを接続すると、<strong>PCを起動していなくても</strong>スマホとPC間で対戦データが完全自動同期されます。外出先で記録したデータも、電波が繋がり次第自動でクラウドに反映されます。
+            </p>
+          </div>
+
+          <div class="setting-form-block">
+            <label class="group-label" for="setting-firebase-config">
+              Firebase設定 (firebaseConfig の JSONまたは貼り付け)
+            </label>
+            <textarea id="setting-firebase-config" class="ancient-input" style="height: 120px; font-size: 11px; font-family: monospace;" placeholder='const firebaseConfig = {
+  apiKey: "...",
+  authDomain: "...",
+  projectId: "...",
+  storageBucket: "...",
+  messagingSenderId: "...",
+  appId: "..."
+};'></textarea>
+            <p class="info-sub" style="margin-top: 4px;">
+              ※Firebaseコンソールで取得した構成コードをそのまま貼り付けて「保存して接続」を押してください。
+            </p>
+          </div>
+
+          <div class="sync-actions-block" style="display: flex; gap: 8px;">
+            <button type="button" class="btn-gold-action" id="btn-save-firebase" style="flex: 1;">
+              <span class="action-icon">💾</span>
+              <span class="action-text">保存してクラウド接続</span>
+            </button>
+            <button type="button" class="btn-sub-danger" id="btn-disconnect-firebase" style="display: none;">
+              切断
+            </button>
+          </div>
+
+          <!-- 通信状態表示 -->
+          <div id="firebase-status-msg" style="margin-top: 10px; font-size: 12px; text-align: center; color: var(--gold-light);"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- フッター -->
+    <footer class="pharaoh-footer">
+      <div class="footer-hieroglyphs">𓊪 𓋹 𓍯 𓎛 𓏏 𓐍 𓁐 𓃠 𓅓 𓆣 𓇋 𓈖</div>
+      <div>YU-GI-OH! MASTER DUEL COUNTER - EGYPTIAN TABLET EDITION</div>
+    </footer>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

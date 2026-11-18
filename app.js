@@ -12,7 +12,8 @@ const DEFAULT_POPULAR_DECKS = [
 
 const STORAGE_KEYS = {
   FIREBASE_CONFIG: "yugioh_firebase_config_v1",
-  LOCAL_DUELS: "yugioh_local_duels_backup_v1"
+  LOCAL_DUELS: "yugioh_local_duels_backup_v1",
+  CUSTOM_DECKS: "yugioh_custom_decks_v1"
 };
 
 // アプリ状態
@@ -26,6 +27,8 @@ const state = {
   unsubscribeSnapshot: null,
   records: [],
   deckStats: [],
+  customDecks: [],
+  isEditingChips: false,
   knownDecks: new Set(DEFAULT_POPULAR_DECKS)
 };
 
@@ -223,6 +226,7 @@ function setupToggleButtons() {
 // デッキ入力＆チップ設定
 // ===================================================
 function setupDeckInputs() {
+  loadCustomDecks();
   renderDeckChips();
 
   elements.btnClearDeck.addEventListener("click", () => {
@@ -232,12 +236,102 @@ function setupDeckInputs() {
 
   elements.deckFilterInput.addEventListener("input", renderDeckStatsTable);
   elements.deckSortSelect.addEventListener("change", renderDeckStatsTable);
+
+  // テーマ編集パネルの開閉
+  const btnToggleEdit = document.getElementById("btn-toggle-edit-chips");
+  const editPanel = document.getElementById("deck-edit-panel");
+  if (btnToggleEdit && editPanel) {
+    btnToggleEdit.addEventListener("click", () => {
+      state.isEditingChips = !state.isEditingChips;
+      editPanel.style.display = state.isEditingChips ? "block" : "none";
+      btnToggleEdit.textContent = state.isEditingChips ? "完了" : "✏️ テーマ編集";
+      renderDeckChips();
+    });
+  }
+
+  // テーマの追加ボタン
+  const btnAddChip = document.getElementById("btn-add-custom-chip");
+  const newChipInput = document.getElementById("new-deck-chip-input");
+  if (btnAddChip && newChipInput) {
+    btnAddChip.addEventListener("click", () => {
+      const name = newChipInput.value.trim();
+      if (!name) return;
+      addDeckToChips(name);
+      newChipInput.value = "";
+      newChipInput.focus();
+      showToast(`「${name}」をクイックテーマに追加しました！`);
+    });
+    newChipInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        btnAddChip.click();
+      }
+    });
+  }
+
+  // 初期テーマへのリセットボタン
+  const btnResetChips = document.getElementById("btn-reset-default-chips");
+  if (btnResetChips) {
+    btnResetChips.addEventListener("click", () => {
+      if (!confirm("クイックテーマを初期の定番テーマ一覧に戻しますか？")) return;
+      state.customDecks = [...DEFAULT_POPULAR_DECKS];
+      saveCustomDecks();
+      renderDeckChips();
+      showToast("初期テーマ一覧に戻しました。");
+    });
+  }
+}
+
+function loadCustomDecks() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.CUSTOM_DECKS);
+    if (raw) {
+      state.customDecks = JSON.parse(raw);
+    } else {
+      state.customDecks = [...DEFAULT_POPULAR_DECKS];
+    }
+  } catch (e) {
+    state.customDecks = [...DEFAULT_POPULAR_DECKS];
+  }
+}
+
+function saveCustomDecks() {
+  localStorage.setItem(STORAGE_KEYS.CUSTOM_DECKS, JSON.stringify(state.customDecks));
+}
+
+// テーマをリストに追加（先頭に追加して重複排除）
+function addDeckToChips(deckName) {
+  if (!deckName || deckName === "不明/その他") return;
+  // 既存のリストにあれば削除して先頭に持ってくる
+  state.customDecks = state.customDecks.filter(d => d !== deckName);
+  state.customDecks.unshift(deckName);
+  // 最大30個まで保持
+  if (state.customDecks.length > 30) {
+    state.customDecks = state.customDecks.slice(0, 30);
+  }
+  saveCustomDecks();
+  renderDeckChips();
 }
 
 function renderDeckChips() {
   elements.quickDeckChips.innerHTML = "";
-  const allDecks = Array.from(state.knownDecks);
-  allDecks.slice(0, 16).forEach(deckName => {
+
+  // 表示するテーマリスト（ユーザー設定テーマ + 過去対戦テーマをマージ）
+  const allSet = new Set(state.customDecks);
+  state.records.forEach(r => {
+    if (r.opponent_deck && r.opponent_deck !== "不明/その他") {
+      allSet.add(r.opponent_deck);
+    }
+  });
+
+  const displayList = state.customDecks.slice(0, 24);
+
+  displayList.forEach(deckName => {
+    const chipWrapper = document.createElement("span");
+    chipWrapper.style.display = "inline-flex";
+    chipWrapper.style.alignItems = "center";
+    chipWrapper.style.position = "relative";
+
     const chip = document.createElement("button");
     chip.type = "button";
     chip.className = "chip-btn";
@@ -246,11 +340,30 @@ function renderDeckChips() {
       elements.deckInput.value = deckName;
       elements.deckInput.focus();
     });
-    elements.quickDeckChips.appendChild(chip);
+    chipWrapper.appendChild(chip);
+
+    // 編集モード時の「✕」削除ボタン
+    if (state.isEditingChips) {
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.textContent = "✕";
+      deleteBtn.style.cssText = "background:#8b2525; color:#fff; border:none; border-radius:50%; width:16px; height:16px; font-size:10px; cursor:pointer; margin-left:-6px; z-index:2; line-height:1;";
+      deleteBtn.title = "このテーマを削除";
+      deleteBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        state.customDecks = state.customDecks.filter(d => d !== deckName);
+        saveCustomDecks();
+        renderDeckChips();
+      });
+      chipWrapper.appendChild(deleteBtn);
+    }
+
+    elements.quickDeckChips.appendChild(chipWrapper);
   });
 
+  // datalist (入力補完) には全テーマをセット
   elements.deckSuggestions.innerHTML = "";
-  allDecks.forEach(d => {
+  Array.from(allSet).forEach(d => {
     const opt = document.createElement("option");
     opt.value = d;
     elements.deckSuggestions.appendChild(opt);
@@ -383,7 +496,7 @@ async function recordDuel() {
     }
 
     state.knownDecks.add(deck);
-    renderDeckChips();
+    addDeckToChips(deck); // ★新しいテーマをクイックチップの先頭に自動追加！
     elements.deckInput.value = "";
     elements.deckInput.focus();
 

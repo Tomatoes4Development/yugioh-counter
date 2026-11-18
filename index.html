@@ -147,8 +147,27 @@
             
             <!-- クイックデッキ選択チップ -->
             <div class="quick-decks-container">
-              <div class="quick-decks-title">よく使われるテーマ / クイック選択:</div>
+              <div class="quick-decks-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span class="quick-decks-title" style="margin-bottom: 0;">よく使われるテーマ (タップで入力 / 自動追加):</span>
+                <button type="button" id="btn-toggle-edit-chips" class="btn-sub-action" style="font-size: 10px; padding: 2px 6px;">
+                  ✏️ テーマ編集
+                </button>
+              </div>
               <div class="quick-deck-chips" id="quick-deck-chips"></div>
+              
+              <!-- テーマ編集フォーム (普段は非表示) -->
+              <div id="deck-edit-panel" style="display: none; margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.5); border: 1px dashed var(--gold-primary); border-radius: 4px;">
+                <div style="display: flex; gap: 6px; margin-bottom: 6px;">
+                  <input type="text" id="new-deck-chip-input" class="ancient-input" placeholder="新しいテーマ名を追加..." style="padding: 6px 8px; font-size: 12px;">
+                  <button type="button" id="btn-add-custom-chip" class="btn-sub-action" style="white-space: nowrap; font-size: 11px;">追加</button>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 10px; color: var(--papyrus-muted);">※チップ上の「✕」を押すと削除できます</span>
+                  <button type="button" id="btn-reset-default-chips" style="background: none; border: none; color: #ff9d9d; font-size: 10px; cursor: pointer; text-decoration: underline;">
+                    初期テーマに戻す
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 

@@ -120,47 +120,65 @@
             </div>
           </div>
 
-          <!-- 新規追加：自分の使用デッキ -->
+          <!-- 自分の使用デッキ (石板プルダウン) -->
           <div class="form-group">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <label class="group-label" for="my-deck-select" style="margin-bottom: 0;">
+              <label class="group-label" style="margin-bottom: 0;">
                 <span class="label-icon">👑</span>
                 自分の使用デッキ (MY DECK)
               </label>
-              <button type="button" id="btn-toggle-add-theme" class="btn-text-link">
-                ＋ テーマ追加
+              <button type="button" id="btn-toggle-theme-manager" class="btn-text-link">
+                ✏️ テーマの追加・削除
               </button>
             </div>
-            <div class="select-wrapper">
-              <select id="my-deck-select" class="ancient-select">
-                <!-- JSで五十音順テーマを展開 -->
-              </select>
+            
+            <!-- カスタム石板ドロップダウン -->
+            <div class="custom-dropdown" id="dropdown-my-deck">
+              <div class="dropdown-trigger" tabindex="0">
+                <span class="trigger-label" id="label-my-deck">選択してください</span>
+                <span class="trigger-arrow">▼</span>
+              </div>
+              <div class="dropdown-menu" id="menu-my-deck"></div>
             </div>
           </div>
 
-          <!-- 入力③：対戦相手のデッキタイプ (プルダウン方式) -->
+          <!-- 対戦相手のデッキ (石板プルダウン) -->
           <div class="form-group">
-            <label class="group-label" for="opponent-deck-select">
+            <label class="group-label">
               <span class="label-icon">📜</span>
               対戦相手のデッキテーマ (OPPONENT DECK)
             </label>
-            <div class="select-wrapper">
-              <select id="opponent-deck-select" class="ancient-select">
-                <!-- JSで五十音順テーマを展開 -->
-              </select>
+
+            <!-- カスタム石板ドロップダウン -->
+            <div class="custom-dropdown" id="dropdown-opp-deck">
+              <div class="dropdown-trigger" tabindex="0">
+                <span class="trigger-label" id="label-opp-deck">選択してください</span>
+                <span class="trigger-arrow">▼</span>
+              </div>
+              <div class="dropdown-menu" id="menu-opp-deck"></div>
             </div>
 
-            <!-- テーマ追加・管理パネル (折りたたみ式) -->
+            <!-- テーマ追加＆削除パネル (折りたたみ式) -->
             <div id="theme-manager-panel" class="theme-manager-panel" style="display: none;">
-              <div class="theme-manager-title">新規テーマの登録 (五十音順に自動配置):</div>
-              <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+              <div class="theme-manager-header">
+                <span class="theme-manager-title">➕ 新規テーマの登録:</span>
+              </div>
+              <div style="display: flex; gap: 6px; margin-bottom: 12px;">
                 <input type="text" id="new-theme-input" class="ancient-input" placeholder="テーマ名を入力 (例: 閃刀姫)..." style="padding: 7px 10px; font-size: 13px;">
                 <button type="button" id="btn-add-theme" class="btn-gold-mini">追加</button>
               </div>
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="theme-hint">※追加されたテーマは自分・相手の両方のプールに反映されます</span>
+
+              <div class="theme-manager-header">
+                <span class="theme-manager-title">🗑️ 登録中テーマの削除 (✕を押すと削除):</span>
+              </div>
+              <div class="theme-tags-container" id="theme-tags-container">
+                <!-- JSで削除ボタン付きテーマ一覧を展開 -->
+              </div>
+
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; border-top: 1px dashed rgba(212,175,55,0.2); padding-top: 8px;">
+                <span class="theme-hint">※変更内容は五十音順で自動同期されます</span>
                 <button type="button" id="btn-reset-themes" class="btn-danger-link">
-                  初期テーマにリセット
+                  初期テーマ（13種）にリセット
                 </button>
               </div>
             </div>
@@ -201,7 +219,7 @@
       <!-- 右列：統計表示石板 -->
       <section class="stats-column">
         
-        <!-- 当日の戦績石板 (※自身の使用デッキは反映させず全体のまま) -->
+        <!-- 当日の戦績石板 (※全体のまま) -->
         <div class="tablet-card stats-card today-card">
           <div class="card-corner tl"></div>
           <div class="card-corner tr"></div>
@@ -250,7 +268,7 @@
           </div>
         </div>
 
-        <!-- 通年の戦績石板 (※自分の使用デッキ別絞り込みフィルター付き) -->
+        <!-- 通年の戦績石板 (※使用デッキ別絞り込みフィルター付き) -->
         <div class="tablet-card stats-card alltime-card">
           <div class="card-corner tl"></div>
           <div class="card-corner tr"></div>
@@ -267,18 +285,21 @@
             </div>
           </div>
 
-          <!-- 使用デッキ別フィルター -->
+          <!-- 使用デッキ別フィルター (石板プルダウン) -->
           <div class="my-deck-filter-bar">
             <span class="filter-label">👑 使用デッキ絞り込み:</span>
-            <select id="my-deck-filter-select" class="ancient-select filter-select">
-              <option value="__ALL__">すべての使用デッキ (全体通算)</option>
-              <!-- JSで登録済み使用デッキを展開 -->
-            </select>
+            <div class="custom-dropdown filter-dropdown" id="dropdown-filter-deck">
+              <div class="dropdown-trigger filter-trigger" tabindex="0">
+                <span class="trigger-label" id="label-filter-deck">すべての使用デッキ (全体通算)</span>
+                <span class="trigger-arrow">▼</span>
+              </div>
+              <div class="dropdown-menu" id="menu-filter-deck"></div>
+            </div>
           </div>
 
           <div class="stat-boxes-grid mini">
             <div class="stat-box highlight-small">
-              <div class="stat-label" id="all-win-rate-label">通算勝率</div>
+              <div class="stat-label" id="all-win-rate-label">通算勝率 (全体)</div>
               <div class="stat-value gold" id="all-win-rate">0.0%</div>
               <div class="stat-detail" id="all-win-detail">0勝 0敗</div>
             </div>

@@ -1,6 +1,6 @@
 // ===================================================
 // 遊戯王マスターデュエル カウンター
-// 古代決闘石板 - マイデッキ別通算勝率＆五十音プルダウン
+// 古代決闘石板 - カスタム石板ドロップダウン＆テーマ削除管理
 // ===================================================
 
 // 初期テーマリスト（指定の13テーマ）
@@ -20,7 +20,7 @@ const INITIAL_THEMES = [
   "道化の一座"
 ];
 
-// 五十音順ソート用の読み仮名辞書（漢字テーマを正確にあいうえお順に並べる用）
+// 五十音順ソート用の読み仮名辞書
 const KANA_MAP = {
   "ウィッチクラフト": "うぃっちくらふと",
   "ゴブリンライダー": "ごぶりんらいだー",
@@ -40,7 +40,7 @@ const KANA_MAP = {
 const STORAGE_KEYS = {
   FIREBASE_CONFIG: "yugioh_firebase_config_v1",
   LOCAL_DUELS: "yugioh_local_duels_backup_v1",
-  CUSTOM_THEMES: "yugioh_custom_themes_v2",
+  CUSTOM_THEMES: "yugioh_custom_themes_v3",
   LAST_MY_DECK: "yugioh_last_my_deck_v1"
 };
 
@@ -51,12 +51,12 @@ const state = {
   result: "win",
   myDeck: "",
   opponentDeck: "",
+  selectedFilterDeck: "__ALL__",
   isFirebaseActive: false,
   firestore: null,
   unsubscribeSnapshot: null,
   records: [],
   themes: [],
-  selectedMyDeckFilter: "__ALL__", // 通年成績のマイデッキ絞り込み ("__ALL__" = 全体)
   deckStats: []
 };
 
@@ -74,14 +74,23 @@ const elements = {
   btnSaveFirebase: document.getElementById("btn-save-firebase"),
   btnDisconnectFirebase: document.getElementById("btn-disconnect-firebase"),
 
-  // 入力フォーム (プルダウン式)
-  myDeckSelect: document.getElementById("my-deck-select"),
-  opponentDeckSelect: document.getElementById("opponent-deck-select"),
-  btnToggleAddTheme: document.getElementById("btn-toggle-add-theme"),
+  // カスタムドロップダウン (マイデッキ & 相手デッキ)
+  dropdownMyDeck: document.getElementById("dropdown-my-deck"),
+  labelMyDeck: document.getElementById("label-my-deck"),
+  menuMyDeck: document.getElementById("menu-my-deck"),
+
+  dropdownOppDeck: document.getElementById("dropdown-opp-deck"),
+  labelOppDeck: document.getElementById("label-opp-deck"),
+  menuOppDeck: document.getElementById("menu-opp-deck"),
+
+  // テーマ追加・削除マネージャー
+  btnToggleThemeManager: document.getElementById("btn-toggle-theme-manager"),
   themeManagerPanel: document.getElementById("theme-manager-panel"),
   newThemeInput: document.getElementById("new-theme-input"),
   btnAddTheme: document.getElementById("btn-add-theme"),
+  themeTagsContainer: document.getElementById("theme-tags-container"),
   btnResetThemes: document.getElementById("btn-reset-themes"),
+
   btnRecord: document.getElementById("btn-record"),
   toastMessage: document.getElementById("toast-message"),
 
@@ -106,9 +115,13 @@ const elements = {
   allCoinDetail: document.getElementById("all-coin-detail"),
   allFirstRate: document.getElementById("all-first-rate"),
   allFirstDetail: document.getElementById("all-first-detail"),
-  myDeckFilterSelect: document.getElementById("my-deck-filter-select"),
 
-  // デッキ別テーブル・コントロール
+  // 通年フィルターカスタムドロップダウン
+  dropdownFilterDeck: document.getElementById("dropdown-filter-deck"),
+  labelFilterDeck: document.getElementById("label-filter-deck"),
+  menuFilterDeck: document.getElementById("menu-filter-deck"),
+
+  // 相手デッキ別一覧テーブル
   deckFilterInput: document.getElementById("deck-filter-input"),
   deckSortSelect: document.getElementById("deck-sort-select"),
   deckStatsTbody: document.getElementById("deck-stats-tbody"),
@@ -127,7 +140,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   initServiceWorker();
   loadThemes();
   setupToggleButtons();
-  setupThemeControls();
+  setupThemeManager();
+  setupCustomDropdowns();
   setupActionButtons();
   setupModal();
 
@@ -162,37 +176,42 @@ function saveThemes() {
   localStorage.setItem(STORAGE_KEYS.CUSTOM_THEMES, JSON.stringify(state.themes));
 }
 
-// 五十音順（あいうえお順）ソート
 function sortThemesGojuon() {
-  const getSortKey = (name) => {
-    return KANA_MAP[name] || name;
-  };
-
-  state.themes.sort((a, b) => {
-    return getSortKey(a).localeCompare(getSortKey(b), "ja");
-  });
+  const getSortKey = (name) => KANA_MAP[name] || name;
+  state.themes.sort((a, b) => getSortKey(a).localeCompare(getSortKey(b), "ja"));
 }
 
-function setupThemeControls() {
-  renderSelectOptions();
-
-  // テーマ追加パネルの開閉トグル
-  elements.btnToggleAddTheme.addEventListener("click", () => {
+function setupThemeManager() {
+  // パネル開閉
+  elements.btnToggleThemeManager.addEventListener("click", () => {
     const isHidden = elements.themeManagerPanel.style.display === "none";
     elements.themeManagerPanel.style.display = isHidden ? "block" : "none";
-    elements.btnToggleAddTheme.textContent = isHidden ? "✕ 閉じる" : "＋ テーマ追加";
-    if (isHidden) elements.newThemeInput.focus();
+    elements.btnToggleThemeManager.textContent = isHidden ? "✕ 編集を閉じる" : "✏️ テーマの追加・削除";
+    if (isHidden) {
+      elements.newThemeInput.focus();
+      renderThemeTags();
+    }
   });
 
-  // 新規テーマ追加ボタン
+  // 新規追加
   elements.btnAddTheme.addEventListener("click", () => {
     const name = elements.newThemeInput.value.trim();
     if (!name) return;
-    addNewTheme(name);
+    if (state.themes.includes(name)) {
+      alert("そのテーマは既に登録されています。");
+      return;
+    }
+    state.themes.push(name);
+    sortThemesGojuon();
+    saveThemes();
+
     elements.newThemeInput.value = "";
-    elements.themeManagerPanel.style.display = "none";
-    elements.btnToggleAddTheme.textContent = "＋ テーマ追加";
-    showToast(`「${name}」をテーマ一覧に追加しました！`);
+    // 追加したテーマを相手デッキにセット
+    state.opponentDeck = name;
+    updateDropdownLabels();
+    renderAllDropdownMenus();
+    renderThemeTags();
+    showToast(`「${name}」を追加しました！`);
   });
 
   elements.newThemeInput.addEventListener("keypress", (e) => {
@@ -202,104 +221,190 @@ function setupThemeControls() {
     }
   });
 
-  // 初期テーマリセット
+  // 初期テーマにリセット
   elements.btnResetThemes.addEventListener("click", () => {
     if (!confirm("テーマ一覧を初期の13テーマにリセットしますか？")) return;
     state.themes = [...INITIAL_THEMES];
     sortThemesGojuon();
     saveThemes();
-    renderSelectOptions();
+
+    if (!state.themes.includes(state.myDeck)) state.myDeck = state.themes[0];
+    if (!state.themes.includes(state.opponentDeck)) state.opponentDeck = state.themes[0];
+
+    updateDropdownLabels();
+    renderAllDropdownMenus();
+    renderThemeTags();
     showToast("初期テーマ一覧にリセットしました。");
   });
+}
 
-  // 直前の自分の使用デッキを復元
-  const lastMyDeck = localStorage.getItem(STORAGE_KEYS.LAST_MY_DECK);
-  if (lastMyDeck && state.themes.includes(lastMyDeck)) {
-    elements.myDeckSelect.value = lastMyDeck;
+// テーマ削除用タグの描画
+function renderThemeTags() {
+  elements.themeTagsContainer.innerHTML = "";
+  if (state.themes.length === 0) {
+    elements.themeTagsContainer.innerHTML = '<span style="font-size:11px; color:var(--papyrus-muted); padding:4px;">テーマがありません。上の枠から追加してください。</span>';
+    return;
   }
 
-  // 選択変更時の記憶
-  elements.myDeckSelect.addEventListener("change", () => {
-    localStorage.setItem(STORAGE_KEYS.LAST_MY_DECK, elements.myDeckSelect.value);
-  });
+  state.themes.forEach(theme => {
+    const tag = document.createElement("span");
+    tag.className = "theme-tag";
+    tag.innerHTML = `
+      <span>${escapeHtml(theme)}</span>
+      <button type="button" class="btn-tag-delete" title="「${escapeHtml(theme)}」を削除">✕</button>
+    `;
 
-  // 通年成績のマイデッキフィルター変更
-  elements.myDeckFilterSelect.addEventListener("change", () => {
-    state.selectedMyDeckFilter = elements.myDeckFilterSelect.value;
-    updateAllDisplays();
+    tag.querySelector(".btn-tag-delete").addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteTheme(theme);
+    });
+
+    elements.themeTagsContainer.appendChild(tag);
   });
 }
 
-// テーマの追加（自動五十音順ソート＆即時反映）
-function addNewTheme(themeName) {
-  if (!themeName) return;
-  if (!state.themes.includes(themeName)) {
-    state.themes.push(themeName);
-    sortThemesGojuon();
-    saveThemes();
+// テーマの削除
+function deleteTheme(themeName) {
+  if (state.themes.length <= 1) {
+    alert("テーマは最低1つ以上必要です。");
+    return;
   }
-  renderSelectOptions();
-  // 追加したテーマを選択状態にする
-  elements.opponentDeckSelect.value = themeName;
+
+  state.themes = state.themes.filter(t => t !== themeName);
+  saveThemes();
+
+  // 選択中だった場合のフォールバック
+  if (state.myDeck === themeName) state.myDeck = state.themes[0];
+  if (state.opponentDeck === themeName) state.opponentDeck = state.themes[0];
+
+  updateDropdownLabels();
+  renderAllDropdownMenus();
+  renderThemeTags();
+  showToast(`「${themeName}」を削除しました。`);
 }
 
-// プルダウンの選択肢を再描画
-function renderSelectOptions() {
-  const myCurrent = elements.myDeckSelect.value;
-  const oppCurrent = elements.opponentDeckSelect.value;
+// ===================================================
+// カスタム石板ドロップダウンの制御
+// ===================================================
+function setupCustomDropdowns() {
+  // 初期値の復元
+  const lastMy = localStorage.getItem(STORAGE_KEYS.LAST_MY_DECK);
+  state.myDeck = (lastMy && state.themes.includes(lastMy)) ? lastMy : (state.themes[0] || "");
+  state.opponentDeck = state.themes[1] || state.themes[0] || "";
 
-  // 1. 自分のデッキ プルダウン
-  elements.myDeckSelect.innerHTML = state.themes.map(t => {
-    return `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`;
+  updateDropdownLabels();
+  renderAllDropdownMenus();
+
+  // クリック時の開閉イベント
+  setupSingleDropdown(elements.dropdownMyDeck);
+  setupSingleDropdown(elements.dropdownOppDeck);
+  setupSingleDropdown(elements.dropdownFilterDeck);
+
+  // 画面外クリックで閉じる
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".custom-dropdown")) {
+      closeAllDropdowns();
+    }
+  });
+}
+
+function setupSingleDropdown(dropdownEl) {
+  const trigger = dropdownEl.querySelector(".dropdown-trigger");
+  trigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isOpen = dropdownEl.classList.contains("open");
+    closeAllDropdowns();
+    if (!isOpen) {
+      dropdownEl.classList.add("open");
+    }
+  });
+}
+
+function closeAllDropdowns() {
+  document.querySelectorAll(".custom-dropdown").forEach(d => d.classList.remove("open"));
+}
+
+function updateDropdownLabels() {
+  elements.labelMyDeck.textContent = state.myDeck || "選択してください";
+  elements.labelOppDeck.textContent = state.opponentDeck || "選択してください";
+
+  if (state.selectedFilterDeck === "__ALL__") {
+    elements.labelFilterDeck.textContent = "すべての使用デッキ (全体通算)";
+  } else {
+    elements.labelFilterDeck.textContent = `👑 ${state.selectedFilterDeck} の成績`;
+  }
+}
+
+function renderAllDropdownMenus() {
+  // 1. マイデッキメニュー
+  elements.menuMyDeck.innerHTML = state.themes.map(t => {
+    const isSelected = t === state.myDeck ? "selected" : "";
+    return `<div class="dropdown-item ${isSelected}" data-value="${escapeHtml(t)}">${escapeHtml(t)}</div>`;
   }).join("");
 
-  if (myCurrent && state.themes.includes(myCurrent)) {
-    elements.myDeckSelect.value = myCurrent;
-  } else if (state.themes.length > 0) {
-    elements.myDeckSelect.value = state.themes[0];
-  }
+  elements.menuMyDeck.querySelectorAll(".dropdown-item").forEach(item => {
+    item.addEventListener("click", () => {
+      state.myDeck = item.dataset.value;
+      localStorage.setItem(STORAGE_KEYS.LAST_MY_DECK, state.myDeck);
+      updateDropdownLabels();
+      renderAllDropdownMenus();
+      closeAllDropdowns();
+    });
+  });
 
-  // 2. 対戦相手のデッキ プルダウン
-  elements.opponentDeckSelect.innerHTML = state.themes.map(t => {
-    return `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`;
+  // 2. 相手デッキメニュー
+  elements.menuOppDeck.innerHTML = state.themes.map(t => {
+    const isSelected = t === state.opponentDeck ? "selected" : "";
+    return `<div class="dropdown-item ${isSelected}" data-value="${escapeHtml(t)}">${escapeHtml(t)}</div>`;
   }).join("");
 
-  if (oppCurrent && state.themes.includes(oppCurrent)) {
-    elements.opponentDeckSelect.value = oppCurrent;
-  } else if (state.themes.length > 0) {
-    elements.opponentDeckSelect.value = state.themes[0];
-  }
+  elements.menuOppDeck.querySelectorAll(".dropdown-item").forEach(item => {
+    item.addEventListener("click", () => {
+      state.opponentDeck = item.dataset.value;
+      updateDropdownLabels();
+      renderAllDropdownMenus();
+      closeAllDropdowns();
+    });
+  });
 
-  // 3. 通年フィルター用 プルダウンの更新
-  renderMyDeckFilterOptions();
+  // 3. 通年フィルターメニュー
+  renderFilterDropdownMenu();
 }
 
-function renderMyDeckFilterOptions() {
-  const currentFilter = state.selectedMyDeckFilter;
-  // これまで自分が使用したことのあるデッキ一覧を収集
+function renderFilterDropdownMenu() {
   const usedDecks = new Set();
   state.records.forEach(r => {
     if (r.my_deck) usedDecks.add(r.my_deck);
   });
 
-  const sortedUsed = Array.from(usedDecks).sort((a, b) => {
-    const keyA = KANA_MAP[a] || a;
-    const keyB = KANA_MAP[b] || b;
-    return keyA.localeCompare(keyB, "ja");
-  });
+  const getSortKey = (name) => KANA_MAP[name] || name;
+  const sortedUsed = Array.from(usedDecks).sort((a, b) => getSortKey(a).localeCompare(getSortKey(b), "ja"));
 
-  let optionsHtml = '<option value="__ALL__">すべての使用デッキ (全体通算)</option>';
+  let itemsHtml = `
+    <div class="dropdown-item ${state.selectedFilterDeck === '__ALL__' ? 'selected' : ''}" data-value="__ALL__">
+      すべての使用デッキ (全体通算)
+    </div>
+  `;
+
   sortedUsed.forEach(d => {
-    optionsHtml += `<option value="${escapeHtml(d)}">👑 ${escapeHtml(d)} の成績</option>`;
+    const isSelected = d === state.selectedFilterDeck ? "selected" : "";
+    itemsHtml += `
+      <div class="dropdown-item ${isSelected}" data-value="${escapeHtml(d)}">
+        👑 ${escapeHtml(d)} の成績
+      </div>
+    `;
   });
 
-  elements.myDeckFilterSelect.innerHTML = optionsHtml;
-  if (sortedUsed.includes(currentFilter) || currentFilter === "__ALL__") {
-    elements.myDeckFilterSelect.value = currentFilter;
-  } else {
-    elements.myDeckFilterSelect.value = "__ALL__";
-    state.selectedMyDeckFilter = "__ALL__";
-  }
+  elements.menuFilterDeck.innerHTML = itemsHtml;
+  elements.menuFilterDeck.querySelectorAll(".dropdown-item").forEach(item => {
+    item.addEventListener("click", () => {
+      state.selectedFilterDeck = item.dataset.value;
+      updateDropdownLabels();
+      renderFilterDropdownMenu();
+      closeAllDropdowns();
+      updateAllDisplays();
+    });
+  });
 }
 
 // ===================================================
@@ -356,6 +461,7 @@ function subscribeFirestoreDuels() {
       state.records = records;
       localStorage.setItem(STORAGE_KEYS.LOCAL_DUELS, JSON.stringify(records));
       updateAllDisplays();
+      renderFilterDropdownMenu();
     }, (error) => {
       console.error("Firestore onSnapshot error:", error);
     });
@@ -376,6 +482,7 @@ function loadLocalFallbackData() {
     state.records = [];
   }
   updateAllDisplays();
+  renderFilterDropdownMenu();
 }
 
 // ===================================================
@@ -433,6 +540,7 @@ function setupModal() {
     if (!raw) return alert("Firebase設定を貼り付けてください。");
 
     try {
+      let config = null;
       if (raw.includes("{") && raw.includes("}")) {
         const objStr = raw.substring(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
         try {
@@ -471,15 +579,15 @@ function setupModal() {
 // 決闘記録の送信 (自分の使用デッキを含めて保存)
 // ===================================================
 async function recordDuel() {
-  const myDeck = elements.myDeckSelect.value || "未設定";
-  const oppDeck = elements.opponentDeckSelect.value || "不明/その他";
+  const myDeck = state.myDeck || "未設定";
+  const oppDeck = state.opponentDeck || "不明/その他";
   const now = new Date();
   const timestamp = formatDateTime(now);
   const dateStr = formatDate(now);
 
   const record = {
-    my_deck: myDeck,            // ★自分の使用デッキ
-    opponent_deck: oppDeck,     // 対戦相手のデッキ
+    my_deck: myDeck,
+    opponent_deck: oppDeck,
     coin: state.coin,
     turn: state.turn,
     result: state.result,
@@ -537,14 +645,14 @@ function updateAllDisplays() {
   const todayStr = formatDate(new Date());
   elements.todayDateBadge.textContent = todayStr;
 
-  // ★【当日の戦績】: 要望通り自身の使用デッキは反映させず、全体のまま
+  // 当日の戦績: 自身の使用デッキは反映させず全体のまま
   const todayRows = state.records.filter(r => (r.date || r.date_str) === todayStr);
 
-  // ★【通年の戦績】: 選択されたマイデッキで絞り込み
+  // 通年の戦績: 選択されたマイデッキで絞り込み
   let allRows = [...state.records];
-  if (state.selectedMyDeckFilter !== "__ALL__") {
-    allRows = allRows.filter(r => r.my_deck === state.selectedMyDeckFilter);
-    elements.allWinRateLabel.textContent = `「${state.selectedMyDeckFilter}」通算勝率`;
+  if (state.selectedFilterDeck !== "__ALL__") {
+    allRows = allRows.filter(r => r.my_deck === state.selectedFilterDeck);
+    elements.allWinRateLabel.textContent = `「${state.selectedFilterDeck}」通算勝率`;
   } else {
     elements.allWinRateLabel.textContent = "通算勝率 (全体)";
   }
@@ -557,7 +665,6 @@ function updateAllDisplays() {
 
   renderStats(stats);
   renderHistoryTable(state.records.slice(0, 50));
-  renderMyDeckFilterOptions();
 }
 
 function calculateStats(rows) {
@@ -590,7 +697,6 @@ function calculateStats(rows) {
   const second_wins = rows.filter(r => r.turn === "second" && r.result === "win").length;
   const second_win_rate = second_turns > 0 ? round((second_wins / second_turns) * 100, 1) : 0.0;
 
-  // 相手デッキ別集計
   const decks_map = {};
   rows.forEach(r => {
     const d = r.opponent_deck || "不明/その他";

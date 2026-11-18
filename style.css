@@ -1090,10 +1090,11 @@ body {
 .theme-manager-panel {
   margin-top: 10px;
   padding: 14px 16px;
-  background: linear-gradient(135deg, #241c14 0%, #140f0a 100%);
-  border: 1px solid var(--gold-primary);
+  background: #18120c !important;
+  background-color: #18120c !important;
+  border: 1px solid var(--gold-primary) !important;
   border-radius: 4px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.9), inset 0 0 20px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.95), inset 0 0 20px rgba(0, 0, 0, 0.9) !important;
 }
 
 .theme-manager-header {
@@ -1114,23 +1115,24 @@ body {
   max-height: 130px;
   overflow-y: auto;
   padding: 8px;
-  background: #100c08;
-  border: 1px solid #5a4529;
+  background: #0d0a07 !important;
+  background-color: #0d0a07 !important;
+  border: 1px solid #5a4529 !important;
   border-radius: 4px;
   margin-bottom: 8px;
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.8);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.9);
 }
 
 .theme-tag {
   display: inline-flex;
   align-items: center;
-  background: linear-gradient(180deg, #332619 0%, #1d160e 100%);
-  border: 1px solid #8c6d23;
-  color: #fbeea4;
+  background: linear-gradient(180deg, #332619 0%, #1d160e 100%) !important;
+  border: 1px solid #d4af37 !important;
+  color: #ffdf78 !important;
   padding: 4px 10px;
   border-radius: 12px;
   font-size: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
 
 .btn-tag-delete {
@@ -1149,6 +1151,345 @@ body {
 .btn-tag-delete:hover {
   color: #fff;
   background-color: #c53030;
+}
+
+/* ===================================================
+   スキンセレクター (小型プルダウン)
+=================================================== */
+.ancient-select-mini {
+  background: #1f1812;
+  border: 1px solid #735932;
+  border-radius: 4px;
+  color: #fceecb;
+  font-size: 11px;
+  padding: 3px 6px;
+  cursor: pointer;
+  outline: none;
+  font-family: inherit;
+}
+.ancient-select-mini option {
+  background-color: #1a140e;
+  color: #fceecb;
+}
+
+/* ===================================================
+   スキン①：Windows XP 風テーマ (LUNA RETRO)
+=================================================== */
+body[data-theme="winxp"] {
+  background: #004e98 !important;
+  color: #000000 !important;
+  font-family: "Tahoma", "MS UI Gothic", "Segoe UI", sans-serif !important;
+}
+
+body[data-theme="winxp"] .bg-glow,
+body[data-theme="winxp"] .hieroglyph-bg {
+  display: none !important;
+}
+
+/* XP ウィンドウヘッダー */
+body[data-theme="winxp"] .pharaoh-header {
+  background: linear-gradient(180deg, #0058ee 0%, #3593ff 8%, #288eff 18%, #0055ea 100%) !important;
+  border: 3px solid #002288 !important;
+  border-radius: 8px 8px 0 0 !important;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.6) !important;
+  padding: 8px 16px !important;
+}
+body[data-theme="winxp"] .gold-gradient {
+  background: none !important;
+  -webkit-text-fill-color: #ffffff !important;
+  color: #ffffff !important;
+  text-shadow: 1px 1px 2px #001155 !important;
+  font-weight: bold !important;
+}
+body[data-theme="winxp"] .title-sub-text {
+  color: #cce0ff !important;
+}
+body[data-theme="winxp"] .sub-title {
+  color: #e0eeff !important;
+}
+body[data-theme="winxp"] .hieroglyph-divider {
+  display: none !important;
+}
+
+/* XP クラシックウィンドウカード */
+body[data-theme="winxp"] .tablet-card {
+  background: #ece9d8 !important;
+  border: 3px solid #0055ea !important;
+  border-radius: 6px !important;
+  box-shadow: 3px 3px 12px rgba(0, 0, 0, 0.4) !important;
+  color: #000000 !important;
+}
+body[data-theme="winxp"] .card-corner {
+  display: none !important;
+}
+body[data-theme="winxp"] .card-heading {
+  color: #003399 !important;
+  border-bottom: 2px solid #7f9db9 !important;
+  font-weight: bold !important;
+}
+body[data-theme="winxp"] .group-label {
+  color: #000000 !important;
+  font-weight: bold !important;
+}
+
+/* XP 立体ボタン */
+body[data-theme="winxp"] .btn-toggle {
+  background: linear-gradient(180deg, #ffffff 0%, #ece9d8 100%) !important;
+  border: 1px solid #7f9db9 !important;
+  border-radius: 3px !important;
+  color: #000000 !important;
+  box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+body[data-theme="winxp"] .btn-toggle:hover {
+  border-color: #0055ea !important;
+  background: linear-gradient(180deg, #f0f7ff 0%, #d8e8fc 100%) !important;
+}
+body[data-theme="winxp"] .btn-toggle.active {
+  background: linear-gradient(180deg, #cde3ff 0%, #87b9f8 100%) !important;
+  border: 2px solid #0055ea !important;
+  color: #001155 !important;
+  font-weight: bold !important;
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+body[data-theme="winxp"] .btn-toggle.active .btn-symbol {
+  color: #0033cc !important;
+  text-shadow: none !important;
+}
+
+body[data-theme="winxp"] .result-btn.win.active {
+  background: linear-gradient(180deg, #d4f8d4 0%, #8ae88a 100%) !important;
+  border-color: #2e8b2e !important;
+  color: #004400 !important;
+}
+body[data-theme="winxp"] .result-btn.lose.active {
+  background: linear-gradient(180deg, #ffd8d8 0%, #f88a8a 100%) !important;
+  border-color: #cc0000 !important;
+  color: #660000 !important;
+}
+
+/* XP スタートボタン風「記録」ボタン */
+body[data-theme="winxp"] .btn-gold-action {
+  background: linear-gradient(180deg, #6ec038 0%, #3f8f17 100%) !important;
+  border: 2px solid #236109 !important;
+  border-radius: 6px !important;
+  color: #ffffff !important;
+  text-shadow: 1px 1px 2px #002200 !important;
+  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.4) !important;
+}
+body[data-theme="winxp"] .btn-gold-action:hover {
+  background: linear-gradient(180deg, #7ad640 0%, #469e1a 100%) !important;
+}
+
+/* XP コンボボックス・ドロップダウン */
+body[data-theme="winxp"] .dropdown-trigger {
+  background: #ffffff !important;
+  border: 1px solid #7f9db9 !important;
+  color: #000000 !important;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.1) !important;
+}
+body[data-theme="winxp"] .trigger-arrow {
+  color: #0055ea !important;
+}
+body[data-theme="winxp"] .dropdown-menu {
+  background: #ffffff !important;
+  border: 1px solid #7f9db9 !important;
+  box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.3) !important;
+}
+body[data-theme="winxp"] .dropdown-item {
+  color: #000000 !important;
+  border-bottom: 1px solid #e0e0e0 !important;
+}
+body[data-theme="winxp"] .dropdown-item:hover {
+  background: #316ac5 !important;
+  color: #ffffff !important;
+}
+body[data-theme="winxp"] .dropdown-item.selected {
+  background: #cde3ff !important;
+  color: #0033cc !important;
+}
+
+/* XP 統計ボックス */
+body[data-theme="winxp"] .stat-box {
+  background: #ffffff !important;
+  border: 1px solid #7f9db9 !important;
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+body[data-theme="winxp"] .stat-label {
+  color: #444444 !important;
+  font-weight: bold !important;
+}
+body[data-theme="winxp"] .stat-value {
+  color: #0033cc !important;
+}
+body[data-theme="winxp"] .stat-value.gold {
+  color: #cc6600 !important;
+  text-shadow: none !important;
+}
+
+/* XP テーブル */
+body[data-theme="winxp"] .table-container {
+  background: #ffffff !important;
+  border: 1px solid #7f9db9 !important;
+}
+body[data-theme="winxp"] .ancient-table th {
+  background: linear-gradient(180deg, #ffffff 0%, #ece9d8 100%) !important;
+  border-bottom: 1px solid #aca899 !important;
+  color: #000000 !important;
+  border-right: 1px solid #aca899 !important;
+}
+body[data-theme="winxp"] .ancient-table td {
+  border-bottom: 1px solid #e0e0e0 !important;
+  color: #000000 !important;
+}
+body[data-theme="winxp"] .ancient-table tbody tr:hover {
+  background-color: #f0f6ff !important;
+}
+
+/* XP テーマ編集パネル */
+body[data-theme="winxp"] .theme-manager-panel {
+  background: #ece9d8 !important;
+  border: 2px solid #7f9db9 !important;
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+body[data-theme="winxp"] .theme-manager-title {
+  color: #003399 !important;
+}
+body[data-theme="winxp"] .theme-tags-container {
+  background: #ffffff !important;
+  border: 1px solid #7f9db9 !important;
+}
+body[data-theme="winxp"] .theme-tag {
+  background: #e1ebf8 !important;
+  border: 1px solid #7f9db9 !important;
+  color: #002288 !important;
+}
+body[data-theme="winxp"] .ancient-input {
+  background: #ffffff !important;
+  border: 1px solid #7f9db9 !important;
+  color: #000000 !important;
+}
+
+/* ===================================================
+   スキン②：サイバー・マスターデュエル風 (NEO CYBER)
+=================================================== */
+body[data-theme="cyber"] {
+  background: #060910 !important;
+  color: #e2e8f0 !important;
+  font-family: "Segoe UI", "Rajdhani", sans-serif !important;
+}
+
+body[data-theme="cyber"] .bg-glow {
+  background: radial-gradient(circle at 50% 15%, rgba(0, 240, 255, 0.12) 0%, transparent 65%) !important;
+}
+
+body[data-theme="cyber"] .pharaoh-header {
+  background: linear-gradient(180deg, #0f172a 0%, #090d16 100%) !important;
+  border: 2px solid #00f0ff !important;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.35) !important;
+}
+body[data-theme="cyber"] .gold-gradient {
+  background: linear-gradient(180deg, #ffffff 0%, #00f0ff 60%, #0284c7 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  text-shadow: 0 0 12px rgba(0, 240, 255, 0.6) !important;
+}
+body[data-theme="cyber"] .header-emblem {
+  color: #00f0ff !important;
+  filter: drop-shadow(0 0 8px #00f0ff) !important;
+}
+
+body[data-theme="cyber"] .tablet-card {
+  background: rgba(13, 20, 36, 0.95) !important;
+  border: 1px solid rgba(0, 240, 255, 0.4) !important;
+  box-shadow: 0 0 18px rgba(0, 240, 255, 0.15) !important;
+}
+body[data-theme="cyber"] .card-heading {
+  color: #00f0ff !important;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.3) !important;
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.4) !important;
+}
+
+body[data-theme="cyber"] .btn-toggle {
+  background: #0d1527 !important;
+  border: 1px solid #1e293b !important;
+  color: #94a3b8 !important;
+}
+body[data-theme="cyber"] .btn-toggle.active {
+  background: #0f2b48 !important;
+  border: 2px solid #00f0ff !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.5) !important;
+}
+body[data-theme="cyber"] .btn-toggle.active .btn-symbol {
+  color: #00f0ff !important;
+  text-shadow: 0 0 8px #00f0ff !important;
+}
+
+body[data-theme="cyber"] .result-btn.win.active {
+  border-color: #10b981 !important;
+  background: #064e3b !important;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.5) !important;
+}
+body[data-theme="cyber"] .result-btn.lose.active {
+  border-color: #f43f5e !important;
+  background: #4c0519 !important;
+  box-shadow: 0 0 15px rgba(244, 63, 94, 0.5) !important;
+}
+
+body[data-theme="cyber"] .btn-gold-action {
+  background: linear-gradient(90deg, #0284c7 0%, #00f0ff 100%) !important;
+  border: 2px solid #38bdf8 !important;
+  color: #04101e !important;
+  font-weight: 900 !important;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.6) !important;
+}
+
+body[data-theme="cyber"] .dropdown-trigger {
+  background: #0b1120 !important;
+  border: 1px solid #00f0ff !important;
+  color: #e2e8f0 !important;
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.2) !important;
+}
+body[data-theme="cyber"] .dropdown-menu {
+  background: #080d1a !important;
+  border: 1px solid #00f0ff !important;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.3) !important;
+}
+body[data-theme="cyber"] .dropdown-item:hover {
+  background: rgba(0, 240, 255, 0.2) !important;
+  color: #00f0ff !important;
+}
+body[data-theme="cyber"] .dropdown-item.selected {
+  background: rgba(0, 240, 255, 0.25) !important;
+  color: #00f0ff !important;
+}
+
+body[data-theme="cyber"] .stat-box {
+  background: #0a0f1d !important;
+  border: 1px solid rgba(0, 240, 255, 0.3) !important;
+}
+body[data-theme="cyber"] .stat-value.gold {
+  color: #00f0ff !important;
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.7) !important;
+}
+
+body[data-theme="cyber"] .theme-manager-panel {
+  background: #090e1a !important;
+  border: 1px solid #00f0ff !important;
+}
+body[data-theme="cyber"] .theme-tags-container {
+  background: #050811 !important;
+  border: 1px solid #1e293b !important;
+}
+body[data-theme="cyber"] .theme-tag {
+  background: #0f1d36 !important;
+  border: 1px solid #00f0ff !important;
+  color: #38bdf8 !important;
+}
+body[data-theme="cyber"] .ancient-input {
+  background: #050811 !important;
+  border: 1px solid #00f0ff !important;
+  color: #e2e8f0 !important;
 }
 
 /* ===================================================

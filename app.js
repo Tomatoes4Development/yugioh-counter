@@ -41,7 +41,8 @@ const STORAGE_KEYS = {
   FIREBASE_CONFIG: "yugioh_firebase_config_v1",
   LOCAL_DUELS: "yugioh_local_duels_backup_v1",
   CUSTOM_THEMES: "yugioh_custom_themes_v3",
-  LAST_MY_DECK: "yugioh_last_my_deck_v1"
+  LAST_MY_DECK: "yugioh_last_my_deck_v1",
+  APP_SKIN: "yugioh_app_skin_v1"
 };
 
 // アプリ状態
@@ -138,6 +139,7 @@ const elements = {
 // ===================================================
 document.addEventListener("DOMContentLoaded", async () => {
   initServiceWorker();
+  initSkin();
   loadThemes();
   setupToggleButtons();
   setupThemeManager();
@@ -148,6 +150,23 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Firebase接続試行
   await initFirebase();
 });
+
+// スキン（テーマ）の初期化と切り替え
+function initSkin() {
+  const skinSelect = document.getElementById("skin-select");
+  const savedSkin = localStorage.getItem(STORAGE_KEYS.APP_SKIN) || "egypt";
+
+  document.body.setAttribute("data-theme", savedSkin);
+  if (skinSelect) {
+    skinSelect.value = savedSkin;
+    skinSelect.addEventListener("change", () => {
+      const chosen = skinSelect.value;
+      document.body.setAttribute("data-theme", chosen);
+      localStorage.setItem(STORAGE_KEYS.APP_SKIN, chosen);
+      showToast(`スキンを「${skinSelect.options[skinSelect.selectedIndex].text}」に切り替えました！`);
+    });
+  }
+}
 
 function initServiceWorker() {
   if ("serviceWorker" in navigator) {
@@ -249,6 +268,7 @@ function renderThemeTags() {
   state.themes.forEach(theme => {
     const tag = document.createElement("span");
     tag.className = "theme-tag";
+    tag.style.cssText = "background: linear-gradient(180deg, #332619 0%, #1d160e 100%) !important; border: 1px solid #d4af37 !important; color: #ffdf78 !important;";
     tag.innerHTML = `
       <span>${escapeHtml(theme)}</span>
       <button type="button" class="btn-tag-delete" title="「${escapeHtml(theme)}」を削除">✕</button>

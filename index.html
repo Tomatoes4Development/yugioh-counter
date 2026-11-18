@@ -10,7 +10,7 @@
   <meta name="theme-color" content="#d4af37">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
   <!-- Firebase SDK (互換モード) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -21,13 +21,22 @@
     <div class="bg-glow"></div>
     <div class="hieroglyph-bg"></div>
 
-    <!-- 上部ステータスバー (同期状態・スマホ連携) -->
+    <!-- 上部ステータスバー (同期状態・スマホ連携 & スキン切替) -->
     <div class="top-status-bar">
       <div class="sync-status" id="connection-status-pill">
         <span class="status-indicator offline" id="status-dot"></span>
         <span id="status-text">ローカル保存モード</span>
       </div>
-      <div class="top-status-actions">
+      <div class="top-status-actions" style="display: flex; gap: 8px; align-items: center;">
+        <!-- アプリのスキン（テーマ）切り替え -->
+        <div class="skin-selector-wrapper" style="display: flex; align-items: center; gap: 4px;">
+          <label for="skin-select" style="font-size: 11px; color: var(--gold-light);">🎨 スキン:</label>
+          <select id="skin-select" class="ancient-select-mini">
+            <option value="egypt">🏛️ 古代エジプト</option>
+            <option value="winxp">🪟 Windows XP</option>
+            <option value="cyber">⚡ サイバーMD</option>
+          </select>
+        </div>
         <button type="button" class="btn-top-util" id="btn-open-sync-settings" title="Firebase設定">
           ⚙️ 連携設定
         </button>
@@ -159,19 +168,19 @@
             </div>
 
             <!-- テーマ追加＆削除パネル (折りたたみ式) -->
-            <div id="theme-manager-panel" class="theme-manager-panel" style="display: none;">
+            <div id="theme-manager-panel" class="theme-manager-panel" style="display: none; background: #18120c !important; background-color: #18120c !important;">
               <div class="theme-manager-header">
                 <span class="theme-manager-title">➕ 新規テーマの登録:</span>
               </div>
               <div style="display: flex; gap: 6px; margin-bottom: 12px;">
-                <input type="text" id="new-theme-input" class="ancient-input" placeholder="テーマ名を入力 (例: 閃刀姫)..." style="padding: 7px 10px; font-size: 13px;">
+                <input type="text" id="new-theme-input" class="ancient-input" placeholder="テーマ名を入力 (例: 閃刀姫)..." style="padding: 7px 10px; font-size: 13px; background: #0d0a07 !important; background-color: #0d0a07 !important; color: #ffdf78 !important; border: 1px solid #94772b !important;">
                 <button type="button" id="btn-add-theme" class="btn-gold-mini">追加</button>
               </div>
 
               <div class="theme-manager-header">
                 <span class="theme-manager-title">🗑️ 登録中テーマの削除 (✕を押すと削除):</span>
               </div>
-              <div class="theme-tags-container" id="theme-tags-container">
+              <div class="theme-tags-container" id="theme-tags-container" style="background: #0d0a07 !important; background-color: #0d0a07 !important; border: 1px solid #5a4529 !important;">
                 <!-- JSで削除ボタン付きテーマ一覧を展開 -->
               </div>
 
@@ -465,6 +474,6 @@
 
   </div>
 
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
